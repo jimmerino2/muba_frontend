@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #app {
+    @apply h-full;
+  }
+
+  body {
+    @apply bg-ink-900 text-mist-200 font-sans antialiased;
+    background-image:
+      radial-gradient(900px 500px at 12% -8%, rgba(34, 201, 166, 0.06), transparent 60%),
+      radial-gradient(800px 460px at 92% 0%, rgba(124, 138, 255, 0.06), transparent 62%);
+    background-attachment: fixed;
+  }
+
+  /* Dense numeric data reads far better with tabular figures. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    @apply bg-gonka-500/25 text-white;
+  }
+
+  *:focus-visible {
+    @apply outline-none ring-2 ring-gonka-500/70 ring-offset-2 ring-offset-ink-900 rounded-[6px];
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-ink-700 rounded-full border-2 border-solid border-transparent bg-clip-content;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-ink-600;
+  }
+}
+
+@layer components {
+  .surface {
+    @apply bg-ink-850/80 border border-ink-700/70 rounded-xl backdrop-blur-sm;
+  }
+
+  .label {
+    @apply text-2xs font-medium uppercase tracking-[0.13em] text-mist-500;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium
+           transition-colors duration-150 disabled:opacity-40 disabled:pointer-events-none whitespace-nowrap;
+  }
+  .btn-primary {
+    @apply btn bg-gonka-500 text-ink-950 hover:bg-gonka-400;
+  }
+  .btn-ghost {
+    @apply btn border border-ink-700 text-mist-300 hover:bg-ink-800 hover:text-mist-100;
+  }
+  .btn-danger {
+    @apply btn bg-rose-500/15 text-rose-300 border border-rose-500/35 hover:bg-rose-500/25;
+  }
+  .btn-sui {
+    @apply btn bg-sui-500 text-ink-950 hover:bg-sui-400;
+  }
+
+  .field {
+    @apply w-full rounded-lg bg-ink-900/70 border border-ink-700 px-3 py-2 text-sm text-mist-100
+           placeholder:text-mist-500/70 transition-colors focus:border-gonka-600;
+  }
+
+  .link {
+    @apply text-gonka-400 hover:text-gonka-300 underline decoration-gonka-600/40 underline-offset-2;
+  }
+}
