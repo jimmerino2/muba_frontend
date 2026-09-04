@@ -10,9 +10,14 @@ import ClaimStatusBadge from '@/components/ClaimStatusBadge.vue'
 import SkeletonBlock from '@/components/ui/SkeletonBlock.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
+import TreasuryTopUpCard from '@/components/TreasuryTopUpCard.vue'
 
 const auth = useAuthStore()
 const { data, loading, error, refresh } = useAsync(() => insuranceApi.getDashboard(auth.orgId!))
+
+// Defaults on — the backend's own ENABLE_DEV_TOOLS gate is what actually
+// decides whether POST /api/sui/treasury/fund works; this only hides the button.
+const showDevTools = (import.meta.env.VITE_ENABLE_DEV_TOOLS ?? 'true') !== 'false'
 </script>
 
 <template>
@@ -97,6 +102,8 @@ const { data, loading, error, refresh } = useAsync(() => insuranceApi.getDashboa
         />
       </div>
     </section>
+
+    <TreasuryTopUpCard v-if="showDevTools" class="mb-6" />
 
     <!-- The queue itself, so the dashboard is actionable rather than decorative -->
     <section class="surface overflow-hidden">

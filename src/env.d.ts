@@ -30,6 +30,10 @@ interface ImportMetaEnv {
   readonly VITE_TRUTH_SCORE_THRESHOLD?: string
   /** Mirrors the backend's SETTLEMENT_MOCK_MYR_PER_USDC. Default: 4.7 */
   readonly VITE_MYR_PER_USDC?: string
+  /** Mirrors the backend's ENABLE_DEV_TOOLS — shows the insurer dashboard's
+   * "fund settlement treasury" dev button. Defaults on; set to 'false' to
+   * hide it (the backend route 404s independently either way). */
+  readonly VITE_ENABLE_DEV_TOOLS?: string
 }
 
 interface ImportMeta {
