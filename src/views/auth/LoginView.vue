@@ -1,41 +1,85 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { Role } from '@/lib/types'
 import { useAuthStore } from '@/stores/auth'
 import { HOME_FOR } from '@/router'
 
+/**
+ * zkLogin is the sign-in method, not one of several.
+ *
+ * A Google identity plus a server-held salt deterministically derives the
+ * user's Sui address, so signing in and having a wallet are one act — no seed
+ * phrase, no wallet install, and no password to reset. The demo accounts below
+ * exist only so a reviewer can walk all three roles without three Google
+ * accounts; the backend gates them behind ENABLE_DEV_LOGIN and they disappear
+ * from this screen entirely when it is off.
+ *
+ * Note that no role is chosen here any more. The backend resolves the identity
+ * to an existing account, binds a pending employee invite, or creates a new
+ * patient — joining a hospital or an insurer happens through that
+ * organisation's invite, never by picking a role on a login form.
+ */
+
 const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 
-const selected = ref<Role>('patient')
+const showDemoAccounts = ref(false)
 
-const ROLES: { key: Role; label: string; who: string; blurb: string }[] = [
-  {
-    key: 'patient',
+/** One entry per role, so the demo list reads as three experiences rather than
+ * six near-identical seeded accounts. Admin accounts are preferred: they can
+ * exercise everything an employee can, plus the org-management screens. */
+const demoByRole = computed(() => {
+  const order: Role[] = ['patient', 'hospital', 'insurance']
+  return order
+    .map((role) => {
+      const forRole = auth.demoAccounts.filter((a) => a.role === role)
+      return forRole.find((a) => a.employeeRole === 'ADMIN') ?? forRole[0] ?? null
+    })
+    .filter((a): a is NonNullable<typeof a> => a !== null)
+})
+
+const ROLE_BLURBS: Record<Role, { label: string; blurb: string }> = {
+  patient: {
     label: 'Patient',
-    who: 'Nurul Aisyah binti Rahman',
     blurb: 'See your cover, your records, and exactly why each claim was decided the way it was.',
   },
-  {
-    key: 'hospital',
+  hospital: {
     label: 'Hospital / TPA',
-    who: 'Dr. Farah Iskandar · Gleneagles KL',
     blurb: 'Author records, raise claims against them, and watch verification resolve live.',
   },
-  {
-    key: 'insurance',
+  insurance: {
     label: 'Insurer',
-    who: 'Adrian Yeoh · Great Eastern Takaful',
     blurb: 'Work the review queue with the Truth Score and its reasoning in front of you.',
   },
-]
+}
 
-async function signIn() {
-  const role = await auth.signIn(selected.value)
+onMounted(() => {
+  // Silent by design: no demo accounts is a normal state (dev-login off), not
+  // an error worth putting in front of someone signing in.
+  void auth.loadDemoAccounts()
+})
+
+async function goHome(role: Role) {
   const redirect = route.query.redirect as string | undefined
   await router.push(redirect ?? HOME_FOR[role])
+}
+
+async function signInWithGoogle() {
+  try {
+    await goHome(await auth.signInWithZkLogin())
+  } catch {
+    // The store already holds the message; the template renders it.
+  }
+}
+
+async function signInAsDemo(email: string) {
+  try {
+    await goHome(await auth.signInAsDemoAccount(email))
+  } catch {
+    /* see above */
+  }
 }
 </script>
 
@@ -134,40 +178,12 @@ async function signIn() {
           install.
         </p>
 
-        <fieldset class="mt-7">
-          <legend class="label mb-3">Continue as</legend>
-          <div class="space-y-2">
-            <label
-              v-for="role in ROLES"
-              :key="role.key"
-              class="flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-colors"
-              :class="
-                selected === role.key
-                  ? 'border-gonka-600/50 bg-gonka-500/[0.07]'
-                  : 'border-ink-700 hover:border-ink-600 hover:bg-ink-850/60'
-              "
-            >
-              <input
-                v-model="selected"
-                type="radio"
-                name="role"
-                :value="role.key"
-                class="mt-1 h-3.5 w-3.5 shrink-0 accent-[#22C9A6]"
-              />
-              <div class="min-w-0">
-                <p class="text-sm font-medium text-mist-100">{{ role.label }}</p>
-                <p class="mt-0.5 text-xs text-mist-400">{{ role.who }}</p>
-                <p class="mt-1 text-xs leading-relaxed text-mist-500">{{ role.blurb }}</p>
-              </div>
-            </label>
-          </div>
-        </fieldset>
-
+        <!-- ------------------------------------------------- zkLogin (default) -->
         <button
           type="button"
-          class="btn mt-6 w-full gap-3 border border-ink-600 bg-mist-100 py-2.5 text-ink-950 hover:bg-white"
-          :disabled="auth.signingIn"
-          @click="signIn"
+          class="btn mt-7 w-full gap-3 border border-ink-600 bg-mist-100 py-2.5 text-ink-950 hover:bg-white disabled:opacity-50"
+          :disabled="auth.signingIn || !auth.zkLoginAvailable"
+          @click="signInWithGoogle"
         >
           <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1Z"/>
@@ -175,15 +191,62 @@ async function signIn() {
             <path fill="#FBBC05" d="M5.84 14.11a6.6 6.6 0 0 1 0-4.22V7.05H2.18a11 11 0 0 0 0 9.9l3.66-2.84Z"/>
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1a11 11 0 0 0-9.82 6.05l3.66 2.84c.87-2.6 3.3-4.51 6.16-4.51Z"/>
           </svg>
-          {{ auth.signingIn ? 'Deriving zkLogin address…' : 'Sign in with Google' }}
+          {{ auth.signingIn ? 'Deriving your zkLogin address…' : 'Continue with Google' }}
         </button>
 
-        <p v-if="auth.error" class="mt-3 text-sm text-rose-300">{{ auth.error }}</p>
+        <p v-if="!auth.zkLoginAvailable" class="mt-2.5 text-2xs leading-relaxed text-amber-300/90">
+          zkLogin is unavailable in this build: no Google OAuth client id is configured. Set
+          <code class="font-mono">VITE_GOOGLE_CLIENT_ID</code> to the same client id the backend
+          uses, or continue with a demo account below.
+        </p>
 
-        <p class="mt-4 text-2xs leading-relaxed text-mist-500">
-          Prototype build — zkLogin, the Gonka Router and Sui settlement are all mocked. No real
-          Google account is contacted, and no real funds move. You can switch roles at any time from
-          the sidebar.
+        <p v-if="auth.error" class="mt-3 text-sm leading-relaxed text-rose-300">{{ auth.error }}</p>
+
+        <p class="mt-3 text-2xs leading-relaxed text-mist-500">
+          Your Sui address is derived from your Google identity and a salt held by WayFare — there
+          is no seed phrase to lose and no password to reset. Signing in again with the same Google
+          account is the whole of account recovery.
+        </p>
+
+        <!-- --------------------------------------------------- demo accounts -->
+        <div v-if="demoByRole.length" class="mt-7 border-t border-ink-800 pt-5">
+          <button
+            type="button"
+            class="flex w-full items-center justify-between text-left"
+            :aria-expanded="showDemoAccounts"
+            @click="showDemoAccounts = !showDemoAccounts"
+          >
+            <span class="label">Or use a demo account</span>
+            <span class="text-2xs text-mist-500">{{ showDemoAccounts ? 'Hide' : 'Show' }}</span>
+          </button>
+
+          <div v-if="showDemoAccounts" class="mt-3 space-y-2">
+            <button
+              v-for="account in demoByRole"
+              :key="account.email"
+              type="button"
+              class="w-full rounded-xl border border-ink-700 p-3.5 text-left transition-colors hover:border-ink-600 hover:bg-ink-850/60 disabled:opacity-50"
+              :disabled="auth.signingIn"
+              @click="signInAsDemo(account.email)"
+            >
+              <p class="text-sm font-medium text-mist-100">{{ ROLE_BLURBS[account.role].label }}</p>
+              <p class="mt-0.5 font-mono text-2xs text-mist-400">{{ account.email }}</p>
+              <p class="mt-1 text-xs leading-relaxed text-mist-500">
+                {{ ROLE_BLURBS[account.role].blurb }}
+              </p>
+            </button>
+
+            <p class="pt-1 text-2xs leading-relaxed text-mist-500">
+              Seeded accounts with no real Google identity behind them. The backend only accepts
+              these while <code class="font-mono">ENABLE_DEV_LOGIN</code> is on, and must never
+              expose them in a real deployment.
+            </p>
+          </div>
+        </div>
+
+        <p class="mt-6 text-2xs leading-relaxed text-mist-500">
+          Testnet build — Sui settlement runs against testnet with sponsored gas, and the bank
+          payout leg is simulated. No real funds move.
         </p>
       </div>
     </section>

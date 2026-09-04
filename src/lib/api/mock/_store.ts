@@ -20,7 +20,7 @@ import {
   settlementEvents,
 } from '@/lib/mock-data/blockchain'
 import { now } from '@/lib/mock-data/_time'
-import { conflict, notFound } from './client'
+import { conflict, notFound } from '../client'
 
 /**
  * Mutation helpers shared by the resource modules. These operate on live store

@@ -1,116 +1,60 @@
-import type { Role, User } from '@/lib/types'
-import { findUserByRole } from '@/lib/mock-data/users'
-import { ApiError, respond } from './client'
+import { API_MODE } from './http'
+import * as live from './live/auth'
+import * as mock from './mock/auth'
+import { ApiError } from './client'
 
 /**
- * Mirrors:
- *   POST /api/auth/login
- *   POST /api/auth/logout
- *   POST /api/auth/refresh
- *   GET  /api/auth/me
+ * Sign-in — the dispatch point between the live backend and the mock layer.
  *
- * zkLogin is mocked end to end: "Sign in with Google" resolves straight to a
- * seeded session rather than running a real OAuth round trip.
+ * **zkLogin is the default.** `signInWithZkLogin()` is the real path: a Google
+ * identity goes to `POST /api/identity/login`, the backend verifies it, derives
+ * the user's salt and hence their Sui address, and returns a session. There is
+ * no password anywhere in this architecture, so there is no forgot-password
+ * flow — recovery is signing in with the same Google account again.
+ *
+ * `login(role)` and `switchRole(role)` are the *demo* paths, kept so reviewers
+ * can walk all three roles without three Google accounts. They resolve to the
+ * backend's seeded accounts via its dev-login route, which it gates behind
+ * `ENABLE_DEV_LOGIN` and must never expose in a real deployment.
  */
+const impl = API_MODE === 'mock' ? (mock as unknown as typeof live) : live
 
-const SESSION_KEY = 'wayfare.session'
+export type { Session } from './live/auth'
+export type { DemoAccount } from './live/auth'
 
-export interface Session {
-  user: User
-  token: string
-  expiresAt: string
-  /** Mirrors the zkLogin ephemeral identity the real flow would produce. */
-  zkLogin: {
-    provider: 'google'
-    subjectHash: string
-    suiAddress: string
-    ephemeralKeyExpiryEpoch: number
-  }
-}
+export const { login, logout, refresh, me, peekSession, switchRole } = impl
 
-const ADDRESSES: Record<Role, string> = {
-  patient: '0x7a2f9c81b04e6d35a19f80c2e4b7d6a538f1029c4e8b7a06d3f95c1e284b7d60',
-  hospital: '0xb14e83c9d720a6f5183e94c02d7b6a41f508c39e2b71d06a4f83c5e9107b2d84',
-  insurance: '0x3f81b6d2c47e905a1b8d3f602c9e47a5b1d08f36c2a94e7b0d5f81a3c6e29b04',
-}
+/** The default sign-in path. See the module note. */
+export const signInWithZkLogin: typeof live.signInWithZkLogin =
+  API_MODE === 'mock'
+    ? async () => {
+        throw new ApiError(
+          0,
+          'zkLogin needs the live backend. Unset VITE_API_MODE=mock, or continue with a demo account.',
+          'ZKLOGIN_NOT_AVAILABLE',
+        )
+      }
+    : live.signInWithZkLogin
 
-function mintSession(role: Role): Session {
-  const user = findUserByRole(role)
-  return {
-    user,
-    token: `mock.jwt.${role}.${Date.now().toString(36)}`,
-    expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
-    zkLogin: {
-      provider: 'google',
-      subjectHash: `zk_${role}_${btoa(user.email).replace(/=+$/, '').slice(0, 18)}`,
-      suiAddress: ADDRESSES[role],
-      ephemeralKeyExpiryEpoch: 744,
-    },
-  }
-}
+/** Whether a Google OAuth client id is configured, so the login screen can
+ * explain an unavailable zkLogin button rather than offer one that fails. */
+export const isZkLoginConfigured: typeof live.isZkLoginConfigured =
+  API_MODE === 'mock' ? () => false : live.isZkLoginConfigured
 
-function persist(session: Session | null): void {
-  try {
-    if (session) localStorage.setItem(SESSION_KEY, JSON.stringify(session))
-    else localStorage.removeItem(SESSION_KEY)
-  } catch {
-    /* Private-mode browsers simply lose session persistence; sign-in still works. */
-  }
-}
+/** The seeded demo accounts, or an empty list when dev-login is disabled. */
+export const listDemoAccounts: typeof live.listDemoAccounts =
+  API_MODE === 'mock' ? async () => [] : live.listDemoAccounts
 
-function readPersisted(): Session | null {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as Session
-    if (!parsed?.user?.role) return null
-    return parsed
-  } catch {
-    return null
-  }
-}
-
-/** POST /api/auth/login — the mocked zkLogin (Google) exchange. */
-export async function login(role: Role): Promise<Session> {
-  const session = mintSession(role)
-  persist(session)
-  // Slightly longer than a data read: the real flow performs an OAuth round trip.
-  return respond(session, 500, 900)
-}
-
-/** POST /api/auth/logout */
-export async function logout(): Promise<{ success: true }> {
-  persist(null)
-  return respond({ success: true } as const, 100, 200)
-}
-
-/** POST /api/auth/refresh */
-export async function refresh(): Promise<Session> {
-  const current = readPersisted()
-  if (!current) throw new ApiError(401, 'No active session to refresh.', 'UNAUTHENTICATED')
-  const next = mintSession(current.user.role)
-  persist(next)
-  return respond(next, 120, 250)
-}
-
-/** GET /api/auth/me */
-export async function me(): Promise<Session> {
-  const current = readPersisted()
-  if (!current) throw new ApiError(401, 'Not authenticated.', 'UNAUTHENTICATED')
-  return respond(current, 120, 260)
-}
-
-/** Synchronous read used during router setup, before any await is possible. */
-export function peekSession(): Session | null {
-  return readPersisted()
-}
-
-/**
- * Dev-only role switch. Reviewers can walk all three experiences without three
- * Google accounts — the real build would gate this behind an env flag.
- */
-export async function switchRole(role: Role): Promise<Session> {
-  const session = mintSession(role)
-  persist(session)
-  return respond(session, 200, 380)
-}
+export const signInAsDemoAccount: typeof live.signInAsDemoAccount =
+  API_MODE === 'mock'
+    ? async (email: string) => {
+        // The mock layer has no accounts, only roles — map the seeded demo
+        // addresses onto the role each one stands for.
+        const role = email.includes('hospital')
+          ? 'hospital'
+          : email.includes('insurance')
+            ? 'insurance'
+            : 'patient'
+        return mock.login(role) as unknown as live.Session
+      }
+    : live.signInAsDemoAccount
