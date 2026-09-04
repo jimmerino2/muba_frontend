@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import type { Role } from '@/lib/types'
 import { useAuthStore } from '@/stores/auth'
 import { HOME_FOR } from '@/router'
+import ThemeToggle from '@/components/ui/ThemeToggle.vue'
 
 /**
  * zkLogin is the sign-in method, not one of several.
@@ -84,7 +85,9 @@ async function signInAsDemo(email: string) {
 </script>
 
 <template>
-  <div class="grid min-h-full lg:grid-cols-[1.05fr_1fr]">
+  <div class="relative grid min-h-full lg:grid-cols-[1.05fr_1fr]">
+    <ThemeToggle class="fixed right-4 top-4 z-10" />
+
     <!-- ---------------------------------------------------------- narrative -->
     <section class="relative hidden flex-col justify-between overflow-hidden px-12 py-14 lg:flex">
       <div
@@ -181,7 +184,7 @@ async function signInAsDemo(email: string) {
         <!-- ------------------------------------------------- zkLogin (default) -->
         <button
           type="button"
-          class="btn mt-7 w-full gap-3 border border-ink-600 bg-mist-100 py-2.5 text-ink-950 hover:bg-white disabled:opacity-50"
+          class="btn mt-7 w-full gap-3 border border-ink-600 bg-white py-2.5 text-ink-950 hover:bg-white/90 disabled:opacity-50"
           :disabled="auth.signingIn || !auth.zkLoginAvailable"
           @click="signInWithGoogle"
         >

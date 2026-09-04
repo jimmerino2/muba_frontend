@@ -8,6 +8,7 @@ import { useAsync } from '@/lib/useAsync'
 import * as blockchainApi from '@/lib/api/blockchain'
 import { truncateId } from '@/lib/format'
 import CopyChip from '@/components/ui/CopyChip.vue'
+import ThemeToggle from '@/components/ui/ThemeToggle.vue'
 
 /** Sidebar + header chrome, parameterised by role. All three roles share it. */
 const props = defineProps<{ role: Role }>()
@@ -99,7 +100,7 @@ const ROLES: { key: Role; label: string }[] = [
   <div class="flex h-full">
     <!-- ------------------------------------------------------------ sidebar -->
     <aside
-      class="fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col border-r border-ink-800 bg-ink-950/80
+      class="fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col border-r border-ink-800 bg-ink-900/90
              backdrop-blur-md transition-transform lg:static lg:translate-x-0"
       :class="mobileNavOpen ? 'translate-x-0' : '-translate-x-full'"
     >
@@ -232,6 +233,8 @@ const ROLES: { key: Role; label: string }[] = [
             truncate
             class="hidden md:inline-flex"
           />
+
+          <ThemeToggle />
 
           <div class="flex items-center gap-2.5">
             <span

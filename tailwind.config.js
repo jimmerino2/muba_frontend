@@ -4,39 +4,59 @@ export default {
   theme: {
     extend: {
       colors: {
+        // ink/mist form the structural scale (surfaces, borders, text). Their
+        // values are CSS custom properties in style.css so the whole app
+        // repaints between dark and light without touching a single class —
+        // see the `--ink-*` / `--mist-*` declarations there. ink-950 is the
+        // one step left as a plain literal: it is always paired with a bright
+        // accent bg (button text) or used as a scrim, neither of which should
+        // flip with the theme.
         ink: {
           950: '#070A11',
-          900: '#0A0E17',
-          850: '#0E131F',
-          800: '#121826',
-          750: '#171E2E',
-          700: '#1D2537',
-          600: '#2A344A',
-          500: '#3C4860',
+          900: 'rgb(var(--ink-900) / <alpha-value>)',
+          850: 'rgb(var(--ink-850) / <alpha-value>)',
+          800: 'rgb(var(--ink-800) / <alpha-value>)',
+          750: 'rgb(var(--ink-750) / <alpha-value>)',
+          700: 'rgb(var(--ink-700) / <alpha-value>)',
+          600: 'rgb(var(--ink-600) / <alpha-value>)',
+          500: 'rgb(var(--ink-500) / <alpha-value>)',
         },
         mist: {
-          500: '#6B7891',
-          400: '#8B98B0',
-          300: '#AEB9CD',
-          200: '#D2DAE8',
-          100: '#EDF1F8',
+          500: 'rgb(var(--mist-500) / <alpha-value>)',
+          400: 'rgb(var(--mist-400) / <alpha-value>)',
+          300: 'rgb(var(--mist-300) / <alpha-value>)',
+          200: 'rgb(var(--mist-200) / <alpha-value>)',
+          100: 'rgb(var(--mist-100) / <alpha-value>)',
         },
         // Gonka / verification signal — teal. Used ONLY for truth-score surfaces.
+        // 500/600 stay literal (they're the vivid button/accent tier, meant to
+        // read the same in both themes); 300/400/950 are text/tint tiers tuned
+        // per theme for contrast.
         gonka: {
-          300: '#7DEDD4',
-          400: '#4FE3C1',
+          300: 'rgb(var(--gonka-300) / <alpha-value>)',
+          400: 'rgb(var(--gonka-400) / <alpha-value>)',
           500: '#22C9A6',
           600: '#10A98A',
-          950: '#062B26',
+          950: 'rgb(var(--gonka-950) / <alpha-value>)',
         },
         // Sui / on-chain — indigo-violet. Used ONLY for blockchain surfaces.
         sui: {
-          300: '#C2C9FF',
-          400: '#9AA6FF',
+          300: 'rgb(var(--sui-300) / <alpha-value>)',
+          400: 'rgb(var(--sui-400) / <alpha-value>)',
           500: '#7C8AFF',
           600: '#5B68E8',
-          950: '#141838',
+          950: 'rgb(var(--sui-950) / <alpha-value>)',
         },
+        // Status vocabulary (claim/payment tones, truth-score bands). Only the
+        // text-emphasis shades actually used in the app are re-pointed at CSS
+        // vars; every other shade keeps Tailwind's default so low-opacity tint
+        // backgrounds/borders are untouched.
+        rose: { 200: 'rgb(var(--rose-200) / <alpha-value>)', 300: 'rgb(var(--rose-300) / <alpha-value>)' },
+        amber: { 300: 'rgb(var(--amber-300) / <alpha-value>)' },
+        emerald: { 300: 'rgb(var(--emerald-300) / <alpha-value>)' },
+        sky: { 300: 'rgb(var(--sky-300) / <alpha-value>)' },
+        violet: { 300: 'rgb(var(--violet-300) / <alpha-value>)' },
+        cyan: { 300: 'rgb(var(--cyan-300) / <alpha-value>)' },
       },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', 'Segoe UI', 'Roboto', 'sans-serif'],

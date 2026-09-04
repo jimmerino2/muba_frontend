@@ -12,6 +12,18 @@
       rel="stylesheet"
     />
     <title>WayFare — Insurance Claims Coordination</title>
+    <script>
+      // Applied before first paint so switching themes never flashes the
+      // wrong one. Kept in sync at runtime by src/stores/theme.ts.
+      (function () {
+        try {
+          var stored = localStorage.getItem('wayfare-theme');
+          if (stored === 'dark' || stored === 'light') {
+            document.documentElement.dataset.theme = stored;
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body class="h-full">
     <div id="app" class="h-full"></div>

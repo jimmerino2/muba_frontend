@@ -3,8 +3,118 @@
 @tailwind utilities;
 
 @layer base {
+  /*
+   * Theme tokens. Dark is the default palette this project shipped with;
+   * light is a from-scratch reading of the same roles (surface, border, text
+   * emphasis, status tint), not an inverted filter over the dark values —
+   * accent text (gonka/sui/rose/amber/emerald/sky/violet/cyan) is re-picked a
+   * step or two darker per hue so it still clears AA contrast on a light
+   * surface instead of washing out.
+   *
+   * Precedence: explicit [data-theme] (set by the toggle, persisted in
+   * localStorage, applied pre-paint by the inline script in index.html) beats
+   * the prefers-color-scheme fallback, which only applies when no explicit
+   * choice has been made yet.
+   */
   :root {
     color-scheme: dark;
+    --ink-900: 10 14 23;
+    --ink-850: 14 19 31;
+    --ink-800: 18 24 38;
+    --ink-750: 23 30 46;
+    --ink-700: 29 37 55;
+    --ink-600: 42 52 74;
+    --ink-500: 60 72 96;
+
+    --mist-500: 107 120 145;
+    --mist-400: 139 152 176;
+    --mist-300: 174 185 205;
+    --mist-200: 210 218 232;
+    --mist-100: 237 241 248;
+
+    --gonka-300: 125 237 212;
+    --gonka-400: 79 227 193;
+    --gonka-950: 6 43 38;
+
+    --sui-300: 194 201 255;
+    --sui-400: 154 166 255;
+    --sui-950: 20 24 56;
+
+    --rose-200: 254 205 211;
+    --rose-300: 253 164 175;
+    --amber-300: 252 211 77;
+    --emerald-300: 110 231 183;
+    --sky-300: 125 211 252;
+    --violet-300: 196 181 253;
+    --cyan-300: 103 232 249;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme='dark']) {
+      color-scheme: light;
+      --ink-900: 248 250 252;
+      --ink-850: 255 255 255;
+      --ink-800: 241 245 249;
+      --ink-750: 234 238 243;
+      --ink-700: 226 232 240;
+      --ink-600: 203 213 225;
+      --ink-500: 148 163 184;
+
+      --mist-500: 100 116 139;
+      --mist-400: 71 85 105;
+      --mist-300: 51 65 85;
+      --mist-200: 30 41 59;
+      --mist-100: 15 23 42;
+
+      --gonka-300: 17 94 89;
+      --gonka-400: 15 118 110;
+      --gonka-950: 236 253 249;
+
+      --sui-300: 67 56 202;
+      --sui-400: 79 70 229;
+      --sui-950: 238 242 255;
+
+      --rose-200: 159 18 57;
+      --rose-300: 190 18 60;
+      --amber-300: 180 83 9;
+      --emerald-300: 5 150 105;
+      --sky-300: 3 105 161;
+      --violet-300: 124 58 237;
+      --cyan-300: 14 116 144;
+    }
+  }
+
+  :root[data-theme='light'] {
+    color-scheme: light;
+    --ink-900: 248 250 252;
+    --ink-850: 255 255 255;
+    --ink-800: 241 245 249;
+    --ink-750: 234 238 243;
+    --ink-700: 226 232 240;
+    --ink-600: 203 213 225;
+    --ink-500: 148 163 184;
+
+    --mist-500: 100 116 139;
+    --mist-400: 71 85 105;
+    --mist-300: 51 65 85;
+    --mist-200: 30 41 59;
+    --mist-100: 15 23 42;
+
+    --gonka-300: 17 94 89;
+    --gonka-400: 15 118 110;
+    --gonka-950: 236 253 249;
+
+    --sui-300: 67 56 202;
+    --sui-400: 79 70 229;
+    --sui-950: 238 242 255;
+
+    --rose-200: 159 18 57;
+    --rose-300: 190 18 60;
+    --amber-300: 180 83 9;
+    --emerald-300: 5 150 105;
+    --sky-300: 3 105 161;
+    --violet-300: 124 58 237;
+    --cyan-300: 14 116 144;
   }
 
   html,
@@ -27,7 +137,7 @@
   }
 
   ::selection {
-    @apply bg-gonka-500/25 text-white;
+    @apply bg-gonka-500/25;
   }
 
   *:focus-visible {
