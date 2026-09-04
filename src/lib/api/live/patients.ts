@@ -51,6 +51,28 @@ export async function getMe(_patientId: string): Promise<Patient> {
   )
 }
 
+export interface UpdateProfilePayload {
+  name?: string
+  phone?: string
+  dateOfBirth?: string
+  gender?: 'male' | 'female'
+  nationalId?: string
+  address?: string
+  bloodType?: string
+}
+
+/**
+ * `PATCH /api/patients/:id` — powers the post-login "complete your profile"
+ * setup page. A freshly auto-created patient (see the backend's
+ * `bindOrCreateForAccount`) starts with every one of these fields blank; the
+ * setup page is what actually fills them in for the first time.
+ */
+export async function updateProfile(patientId: string, patch: UpdateProfilePayload): Promise<Patient> {
+  const patient = await http<WirePatient>(`/api/patients/${patientId}`, { method: 'PATCH', body: patch })
+  cache.patients.put(patient.id, patient)
+  return toPatient(patient)
+}
+
 /* -------------------------------------------------------------- records */
 
 async function hydrateRecord(record: WireMedicalRecord): Promise<MedicalRecord> {

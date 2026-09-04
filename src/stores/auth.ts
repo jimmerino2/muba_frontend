@@ -1,8 +1,20 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import type { Role, User } from '@/lib/types'
+import type { Patient, Role, User } from '@/lib/types'
 import * as authApi from '@/lib/api/auth'
 import type { DemoAccount, Session } from '@/lib/api/auth'
+import * as patientsApi from '@/lib/api/patients'
+
+/** A freshly auto-created patient profile (see the backend's
+ * `bindOrCreateForAccount`) starts with these blank — the setup page's job
+ * is to fill them in. `gender` is deliberately not part of this check: the
+ * UI's `Patient.gender` has no 'unspecified', so an incomplete profile has
+ * already been silently mapped to 'male' by the time it reaches here (see
+ * `adapters.ts` toPatient) — the setup form still collects a real choice,
+ * it just isn't what triggers the gate. */
+function isProfileComplete(patient: Patient): boolean {
+  return Boolean(patient.phone && patient.dateOfBirth && patient.nationalId && patient.address && patient.bloodType)
+}
 
 /**
  * Session state. `role` drives both the route guards and the shell, so the
@@ -19,6 +31,12 @@ export const useAuthStore = defineStore('auth', () => {
   const signingIn = ref(false)
   const error = ref<string | null>(null)
   const demoAccounts = ref<DemoAccount[]>([])
+
+  /** `null` = not checked yet this session (router guard fetches lazily on
+   * first navigation); `true`/`false` once `patients/me` has been read. Only
+   * ever meaningful for role === 'patient'. */
+  const patientProfileComplete = ref<boolean | null>(null)
+  let profileCheck: Promise<boolean> | null = null
 
   const user = computed<User | null>(() => session.value?.user ?? null)
   const role = computed<Role | null>(() => session.value?.user.role ?? null)
@@ -42,6 +60,8 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
     try {
       session.value = await run()
+      patientProfileComplete.value = null
+      profileCheck = null
       return session.value.user.role
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Sign-in failed.'
@@ -49,6 +69,43 @@ export const useAuthStore = defineStore('auth', () => {
     } finally {
       signingIn.value = false
     }
+  }
+
+  /**
+   * Whether the signed-in patient's profile has the fields a fresh
+   * `bindOrCreateForAccount` row leaves blank. Always `true` for a
+   * non-patient role. Fetched once per session and cached — the router guard
+   * calls this on every navigation under `/patient`, so it must not refetch
+   * every time.
+   */
+  async function isPatientProfileComplete(): Promise<boolean> {
+    if (role.value !== 'patient') return true
+    if (patientProfileComplete.value !== null) return patientProfileComplete.value
+    if (!profileCheck) {
+      profileCheck = patientsApi
+        .getMe(patientId.value!)
+        .then((patient) => {
+          patientProfileComplete.value = isProfileComplete(patient)
+          return patientProfileComplete.value
+        })
+        .catch(() => {
+          // An unreachable/erroring backend must not trap the user on the
+          // setup page forever — fail open, same spirit as `getStatus()`'s
+          // "Checking…" fallback elsewhere in the shell.
+          patientProfileComplete.value = true
+          return true
+        })
+        .finally(() => {
+          profileCheck = null
+        })
+    }
+    return profileCheck
+  }
+
+  /** Called by the setup page on a successful submit, so the very next
+   * navigation doesn't re-fetch to learn what it was just told. */
+  function markPatientProfileComplete(): void {
+    patientProfileComplete.value = true
   }
 
   /** The default path: Google identity in, WayFare session and derived Sui
@@ -75,12 +132,16 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function switchRole(nextRole: Role): Promise<Role> {
     session.value = await authApi.switchRole(nextRole)
+    patientProfileComplete.value = null
+    profileCheck = null
     return nextRole
   }
 
   async function signOut(): Promise<void> {
     await authApi.logout()
     session.value = null
+    patientProfileComplete.value = null
+    profileCheck = null
   }
 
   return {
@@ -102,5 +163,7 @@ export const useAuthStore = defineStore('auth', () => {
     loadDemoAccounts,
     switchRole,
     signOut,
+    isPatientProfileComplete,
+    markPatientProfileComplete,
   }
 })

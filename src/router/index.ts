@@ -16,6 +16,19 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true },
   },
 
+  /**
+   * Standalone — deliberately outside PatientLayout's children, so it never
+   * renders the sidebar/nav chrome a not-yet-completed profile shouldn't be
+   * navigating away from anyway. The guard below redirects every other
+   * /patient/* route here until GET /api/patients/me comes back complete.
+   */
+  {
+    path: '/patient/setup',
+    name: 'patient-setup',
+    component: () => import('@/views/patient/SetupView.vue'),
+    meta: { role: 'patient' as Role, title: 'Complete your profile' },
+  },
+
   /* ------------------------------------------------------------- patient */
   {
     path: '/patient',
@@ -235,7 +248,7 @@ export const router = createRouter({
   scrollBehavior: (_to, _from, saved) => saved ?? { top: 0 },
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const auth = useAuthStore()
 
   if (to.meta.public) {
@@ -250,6 +263,20 @@ router.beforeEach((to) => {
   const required = to.meta.role as Role | undefined
   if (required && auth.role !== required) {
     return HOME_FOR[auth.role!]
+  }
+
+  // A patient with a blank profile (fresh account, never filled in phone/DOB/
+  // etc.) is confined to /patient/setup until they submit it; a patient who
+  // has already completed it is bounced away from setup rather than shown a
+  // form with nothing left to do.
+  if (auth.role === 'patient') {
+    const complete = await auth.isPatientProfileComplete()
+    if (!complete && to.name !== 'patient-setup') {
+      return { path: '/patient/setup', query: { redirect: to.fullPath } }
+    }
+    if (complete && to.name === 'patient-setup') {
+      return HOME_FOR.patient
+    }
   }
 
   return true

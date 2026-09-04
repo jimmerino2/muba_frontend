@@ -33,6 +33,28 @@ export async function getMe(patientId: string): Promise<Patient> {
   return respond(patient)
 }
 
+export interface UpdateProfilePayload {
+  name?: string
+  phone?: string
+  dateOfBirth?: string
+  gender?: 'male' | 'female'
+  nationalId?: string
+  address?: string
+  bloodType?: string
+}
+
+/**
+ * `PATCH /api/patients/:id`. The seeded mock patients are already complete,
+ * so the setup gate never actually triggers in mock mode — this exists only
+ * so the seam holds (every live/ function has a mock/ counterpart).
+ */
+export async function updateProfile(patientId: string, patch: UpdateProfilePayload): Promise<Patient> {
+  const patient = patients.find((p) => p.id === patientId)
+  if (!patient) throw notFound('Patient', patientId)
+  Object.assign(patient, patch)
+  return respond(patient)
+}
+
 /** GET /api/patients/me/records */
 export async function getMyRecords(
   patientId: string,

@@ -8,6 +8,8 @@ import * as mock from './mock/patients'
  */
 const impl = API_MODE === 'mock' ? (mock as unknown as typeof live) : live
 
+export type { UpdateProfilePayload } from './live/patients'
+
 export const {
   getMe,
   getMyRecords,
@@ -16,4 +18,5 @@ export const {
   getMyClaimById,
   getMyPayments,
   getMyPolicies,
+  updateProfile,
 } = impl
