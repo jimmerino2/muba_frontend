@@ -1,7 +1,7 @@
 import type { Role, User } from '@/lib/types'
 import { ApiError } from '../client'
 import { http, setToken } from '../http'
-import type { WireDevAccount, WireMe, WireSession } from '../wire'
+import type { WireAccount, WireDevAccount, WireMe, WireSession } from '../wire'
 import { cache, invalidatePayments } from './_resolve'
 
 /**
@@ -80,8 +80,18 @@ export function roleFor(actorType: WireSession['identity']['actorType']): Role {
   }
 }
 
-function initialsFor(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
+/** `displayName` is `string | null` on the wire — null until a name is known
+ * (a brand-new account whose Google profile carried none, or an org-invited
+ * employee before their first login binds one). `User.name` itself is
+ * non-nullable, so this is also what backfills it. */
+function nameFor(account: Pick<WireAccount, 'displayName' | 'email'>): string {
+  if (account.displayName) return account.displayName
+  if (account.email) return account.email.split('@')[0]!
+  return 'WayFare user'
+}
+
+function initialsFor(name: string | null | undefined): string {
+  const parts = (name ?? '').trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return '??'
   if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase()
   return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase()
@@ -105,7 +115,7 @@ async function toSession(wire: WireSession): Promise<Session> {
 
   const user: User = {
     id: wire.account.id,
-    name: wire.account.displayName,
+    name: nameFor(wire.account),
     email: wire.account.email ?? '',
     role,
     avatarInitials: initialsFor(wire.account.displayName),
@@ -326,7 +336,7 @@ export async function me(): Promise<Session> {
     ...current,
     user: {
       ...current.user,
-      name: fresh.account.displayName,
+      name: nameFor(fresh.account),
       email: fresh.account.email ?? current.user.email,
       avatarInitials: initialsFor(fresh.account.displayName),
       role: roleFor(fresh.account.actorType),
