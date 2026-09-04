@@ -290,6 +290,7 @@ export async function createPolicy(
   }
   policies.push(policy)
   holder.policyIds.push(policy.id)
+
   return respond(policy, 400, 700)
 }
 

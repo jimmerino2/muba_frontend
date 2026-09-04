@@ -14,6 +14,7 @@ import { ago, ahead } from './_time'
 export const policies: Policy[] = [
   {
     id: 'pol_001',
+    name: 'Inpatient & Surgical Plan',
     policyNumber: 'GE-INP-2024-88213',
     insurerId: 'org_greateastern',
     insurerName: 'Great Eastern Takaful',
@@ -32,6 +33,7 @@ export const policies: Policy[] = [
   },
   {
     id: 'pol_002',
+    name: 'Comprehensive Medical Plan',
     policyNumber: 'GE-COM-2025-40917',
     insurerId: 'org_greateastern',
     insurerName: 'Great Eastern Takaful',
@@ -50,6 +52,7 @@ export const policies: Policy[] = [
   },
   {
     id: 'pol_003',
+    name: 'Outpatient & Specialist Plan',
     policyNumber: 'ETQ-OUT-2025-11204',
     insurerId: 'org_etiqa',
     insurerName: 'Etiqa Insurance Berhad',
@@ -68,6 +71,7 @@ export const policies: Policy[] = [
   },
   {
     id: 'pol_004',
+    name: 'Critical Illness Plan',
     policyNumber: 'GE-CRI-2024-77530',
     insurerId: 'org_greateastern',
     insurerName: 'Great Eastern Takaful',
@@ -86,6 +90,7 @@ export const policies: Policy[] = [
   },
   {
     id: 'pol_005',
+    name: 'Inpatient & Surgical Plan',
     policyNumber: 'GE-INP-2025-33641',
     insurerId: 'org_greateastern',
     insurerName: 'Great Eastern Takaful',

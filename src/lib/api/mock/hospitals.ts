@@ -290,6 +290,7 @@ export async function createClaimFromRecord(
     decision: null,
     paymentId: null,
     timeline: [],
+    decisionExplanation: null,
   }
   claims.unshift(claim)
   record.claimId = claim.id

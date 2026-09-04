@@ -28,6 +28,7 @@ const today = new Date()
 const inAYear = new Date(today.getTime() + 365 * 24 * 60 * 60 * 1000)
 
 const form = ref({
+  name: '',
   policyNumber: '',
   holderPatientId: '',
   coverageType: 'Inpatient & Surgical' as CoverageType,
@@ -53,6 +54,7 @@ const { data: existing, loading: loadingPolicy } = useAsync(
 watch(existing, (policy) => {
   if (!policy) return
   form.value = {
+    name: policy.name,
     policyNumber: policy.policyNumber,
     holderPatientId: policy.holderPatientId,
     coverageType: policy.coverageType,
@@ -75,6 +77,7 @@ const limitConflict = computed(
 
 const canSubmit = computed(
   () =>
+    form.value.name.trim() &&
     form.value.policyNumber.trim() &&
     form.value.holderPatientId &&
     !limitConflict.value &&
@@ -84,6 +87,7 @@ const canSubmit = computed(
 
 const save = useAction(async () => {
   const payload = {
+    name: form.value.name.trim(),
     policyNumber: form.value.policyNumber.trim(),
     holderPatientId: form.value.holderPatientId,
     coverageType: form.value.coverageType,
@@ -126,6 +130,17 @@ async function submit() {
         <h2 class="mb-4 text-sm font-semibold tracking-tight text-mist-100">Identity and cover</h2>
 
         <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label for="policy-name" class="label mb-1.5 block">Policy name</label>
+            <input
+              id="policy-name"
+              v-model="form.name"
+              class="field"
+              placeholder="Basic Medical Plan"
+              required
+            />
+          </div>
+
           <div>
             <label for="policy-number" class="label mb-1.5 block">Policy number</label>
             <input

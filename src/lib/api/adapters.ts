@@ -286,6 +286,7 @@ export function toClaim(claim: WireClaim, names: ClaimNames, events: ClaimEvent[
     decision: toDecision(claim, events),
     paymentId: names.paymentId,
     timeline: events,
+    decisionExplanation: claim.decisionExplanation,
   }
 }
 
@@ -305,6 +306,7 @@ export function toPolicy(
 ): Policy {
   return {
     id: policy.id,
+    name: policy.name,
     policyNumber: policy.policyNumber,
     insurerId: policy.insuranceOrganizationId,
     insurerName: names.insurerName,

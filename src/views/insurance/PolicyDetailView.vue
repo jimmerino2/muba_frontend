@@ -27,6 +27,7 @@ const facts = computed(() => {
   if (!p) return []
   return [
     { label: 'Policy number', value: p.policyNumber, mono: true },
+    { label: 'Name', value: p.name },
     { label: 'Insured party', value: p.holderName },
     { label: 'Coverage type', value: p.coverageType },
     { label: 'Status', value: p.status },
@@ -58,8 +59,8 @@ const utilisation = computed(() => {
 
     <template v-else-if="data">
       <PageHeader
-        :title="data.policy.policyNumber"
-        :subtitle="`${data.policy.holderName} · ${data.policy.coverageType}`"
+        :title="data.policy.name"
+        :subtitle="`${data.policy.policyNumber} · ${data.policy.holderName} · ${data.policy.coverageType}`"
         :back="{ to: '/insurance/policies', label: 'All policies' }"
       >
         <template #actions>

@@ -328,6 +328,7 @@ export async function createPolicy(
   const policy = await http<WirePolicy>('/api/policies', {
     method: 'POST',
     body: {
+      name: payload.name,
       policyNumber: payload.policyNumber,
       patientRef: payload.holderPatientId,
       coverageType: payload.coverageType,

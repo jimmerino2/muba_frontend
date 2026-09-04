@@ -186,6 +186,13 @@ const decidable = computed(
         />
       </div>
 
+      <section v-if="data.claim.decisionExplanation" class="surface mb-5 p-5">
+        <h2 class="mb-3 text-sm font-semibold tracking-tight text-mist-100">Final decision</h2>
+        <p class="whitespace-pre-line text-sm leading-relaxed text-mist-300">
+          {{ data.claim.decisionExplanation }}
+        </p>
+      </section>
+
       <section v-if="data.claim.decision" class="surface mb-5 p-5">
         <div class="flex items-center justify-between gap-3">
           <h2 class="text-sm font-semibold tracking-tight text-mist-100">Decision on record</h2>

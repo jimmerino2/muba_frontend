@@ -60,6 +60,8 @@ export type CoverageType =
 
 export interface Policy {
   id: string
+  /** Human-readable label (e.g. "Basic Medical Plan") — display only. */
+  name: string
   policyNumber: string
   insurerId: string
   insurerName: string
@@ -196,6 +198,9 @@ export interface Claim {
   decision: ClaimDecision | null
   paymentId: string | null
   timeline: ClaimEvent[]
+  /** Human-readable explanation of the final decision — what happened, why
+   * it was/wasn't covered, and how AI trust factored in (or didn't). */
+  decisionExplanation: string | null
 }
 
 /* ---------------------------------------- gonka verification (truth score) */

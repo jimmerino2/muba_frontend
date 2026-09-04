@@ -94,6 +94,7 @@ export interface WirePatient {
 
 export interface WirePolicy {
   id: string
+  name: string
   policyNumber: string
   patientRef: string
   insuranceOrganizationId: string
@@ -235,6 +236,11 @@ export interface WireClaim {
   settlementReference: string | null
   clauseContext: WireClauseContext | null
   clauseAssessment: WireClauseAssessment | null
+  /** ISO 8601, or null. Display/audit metadata only. */
+  treatmentDate: string | null
+  /** Human-readable explanation of the final decision, built once policy,
+   * clauses and trust are all known. Null until verification has run. */
+  decisionExplanation: string | null
   createdAt: string
   updatedAt: string
 }

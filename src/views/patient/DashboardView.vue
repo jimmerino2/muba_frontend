@@ -79,7 +79,7 @@ const recentClaims = computed(() => (data.value?.claims ?? []).slice(0, 4))
           <div class="min-w-0">
             <div class="flex items-center gap-2">
               <p class="text-lg font-semibold tracking-tight text-mist-100">
-                {{ data.policy.insurerName }}
+                {{ data.policy.name }}
               </p>
               <span
                 class="rounded-md border border-emerald-500/35 bg-emerald-500/12 px-2 py-0.5 text-2xs font-medium capitalize text-emerald-300"
@@ -87,7 +87,7 @@ const recentClaims = computed(() => (data.value?.claims ?? []).slice(0, 4))
                 {{ data.policy.status }}
               </span>
             </div>
-            <p class="mt-1 text-sm text-mist-400">{{ data.policy.coverageType }}</p>
+            <p class="mt-1 text-sm text-mist-400">{{ data.policy.insurerName }} · {{ data.policy.coverageType }}</p>
             <p class="tnum mt-3 font-mono text-sm text-mist-300">{{ data.policy.policyNumber }}</p>
           </div>
 

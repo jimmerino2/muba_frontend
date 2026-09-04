@@ -53,7 +53,7 @@ const STATUS_TONE: Record<Policy['status'], string> = {
       :to="(row) => `/insurance/policies/${row.id}`"
       searchable
       search-placeholder="Search by policy number, holder or coverage…"
-      :search-fields="(row) => [row.policyNumber, row.holderName, row.coverageType]"
+      :search-fields="(row) => [row.name, row.policyNumber, row.holderName, row.coverageType]"
       :initial-sort="{ key: 'policyNumber', direction: 'asc' }"
       empty-title="No policies yet"
       empty-body="Create a policy to start underwriting claims."
@@ -64,14 +64,17 @@ const STATUS_TONE: Record<Policy['status'], string> = {
       </template>
 
       <template #cell-policyNumber="{ row }">
-        <div class="flex items-center gap-2.5">
-          <span class="font-mono text-xs text-mist-300">{{ row.policyNumber }}</span>
-          <span
-            class="rounded border px-1.5 py-0.5 text-2xs capitalize"
-            :class="STATUS_TONE[row.status]"
-          >
-            {{ row.status }}
-          </span>
+        <div>
+          <p class="text-sm font-medium text-mist-100">{{ row.name }}</p>
+          <div class="mt-0.5 flex items-center gap-2.5">
+            <span class="font-mono text-xs text-mist-400">{{ row.policyNumber }}</span>
+            <span
+              class="rounded border px-1.5 py-0.5 text-2xs capitalize"
+              :class="STATUS_TONE[row.status]"
+            >
+              {{ row.status }}
+            </span>
+          </div>
         </div>
       </template>
 

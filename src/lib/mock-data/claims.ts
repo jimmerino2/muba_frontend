@@ -77,6 +77,7 @@ export const claims: Claim[] = [
       ev('paid', 'Settled on Sui', 'RM11,900 (2,494.76 USDC) transferred to Gleneagles Kuala Lumpur.', 'Sui testnet', 'sui', ago(45)),
       ev('closed', 'Claim closed', 'Settlement confirmed by the provider; no further action.', 'System', 'system', ago(44)),
     ],
+    decisionExplanation: null,
   },
 
   /* ------------- clm_002 — pending_review, LOW score (core demo contrast) ★ */
@@ -109,6 +110,7 @@ export const claims: Claim[] = [
       ev('pending_review', 'Routed to human review', 'Score 58 is below the policy threshold of 82. Assigned to the medical assessment queue.', 'WayFare policy engine', 'system', ago(10, 1)),
       ev('pending_review', 'Assessor note', 'Requested the February MRI report for comparison before ruling on the repeat imaging line.', 'Adrian Yeoh', 'insurance', ago(9), true),
     ],
+    decisionExplanation: null,
   },
 
   /* ------------------------------- clm_003 — auto-approved, awaiting settlement */
@@ -146,6 +148,7 @@ export const claims: Claim[] = [
       ev('verified', 'Gonka verification complete', 'Truth Score 91 · request gonka-req-2f88ad14.', 'Gonka Router', 'gonka', ago(6, 3)),
       ev('auto_approved', 'Auto-approval threshold met', 'Score 91 ≥ 88 and RM3,850 ≤ RM5,000 limit — no human review required.', 'WayFare policy engine', 'system', ago(6, 3)),
     ],
+    decisionExplanation: null,
   },
 
   /* ------------------------------- clm_004 — submitted, awaiting verification */
@@ -174,6 +177,7 @@ export const claims: Claim[] = [
       ev('created', 'Claim drafted', 'Raised from medical record MR-2026-1091.', 'Dr. Amir Zulkifli', 'hospital', ago(0, 3)),
       ev('submitted', 'Submitted to insurer', 'Queued for Gonka plausibility verification.', 'Dr. Amir Zulkifli', 'hospital', ago(0, 2)),
     ],
+    decisionExplanation: null,
   },
 
   /* ------------------------- clm_005 — verified, routing decision still pending */
@@ -203,6 +207,7 @@ export const claims: Claim[] = [
       ev('submitted', 'Submitted to insurer', 'Sent to Great Eastern Takaful with 2 supporting documents.', 'Dr. Suresh Menon', 'hospital', ago(1, 3)),
       ev('verified', 'Gonka verification complete', 'Truth Score 87 · request gonka-req-6c41be05. Awaiting the policy routing decision.', 'Gonka Router', 'gonka', ago(0, 0, 6)),
     ],
+    decisionExplanation: null,
   },
 
   /* --------------- clm_006 — human-approved after review, payment outstanding */
@@ -242,6 +247,7 @@ export const claims: Claim[] = [
       ev('pending_review', 'Assessor note', 'Platelet trend in the lab report is consistent with the coded severity; no query raised with the provider.', 'Adrian Yeoh', 'insurance', ago(18), true),
       ev('approved', 'Approved by assessor', 'RM7,920 payable after the RM500 deductible.', 'Adrian Yeoh', 'insurance', ago(17)),
     ],
+    decisionExplanation: null,
   },
 
   /* -------------------------------------- clm_007 — rejected after human review */
@@ -281,6 +287,7 @@ export const claims: Claim[] = [
       ev('pending_review', 'Assessor note', 'Cross-checked the operative note against the exclusions schedule; cosmetic components are itemised separately in the bill.', 'Adrian Yeoh', 'insurance', ago(31), true),
       ev('rejected', 'Rejected by assessor', 'Cosmetic components excluded under policy section 7.3; resubmission invited for the functional component.', 'Adrian Yeoh', 'insurance', ago(30)),
     ],
+    decisionExplanation: null,
   },
 
   /* --------------------------------- clm_008 — auto-approved and paid on Sui */
@@ -320,6 +327,7 @@ export const claims: Claim[] = [
       ev('approved', 'Approved for settlement', 'RM25,500 payable after the RM2,000 deductible.', 'WayFare policy engine', 'system', ago(60, 2)),
       ev('paid', 'Settled on Sui', 'RM25,500 (5,345.91 USDC) transferred to Gleneagles Kuala Lumpur.', 'Sui testnet', 'sui', ago(58)),
     ],
+    decisionExplanation: null,
   },
 
   /* ------------------------------------------- clm_009 — closed, historical */
@@ -360,6 +368,7 @@ export const claims: Claim[] = [
       ev('paid', 'Settled on Sui', 'RM4,500 (943.40 USDC) transferred to MediAssist TPA Sdn Bhd.', 'Sui testnet', 'sui', ago(85)),
       ev('closed', 'Claim closed', 'Settlement confirmed by the provider; no further action.', 'System', 'system', ago(83)),
     ],
+    decisionExplanation: null,
   },
 
   /* ------------------------------- clm_010 — draft, never submitted (created) */
@@ -387,6 +396,7 @@ export const claims: Claim[] = [
     timeline: [
       ev('created', 'Claim drafted', 'Raised from medical record MR-2026-1096. Not yet submitted to the insurer.', 'Dr. Lee Kar Wai', 'hospital', ago(0, 20)),
     ],
+    decisionExplanation: null,
   },
 
   /* ------- clm_011 — HIGH score but routed on amount alone (core contrast) ★ */
@@ -419,6 +429,7 @@ export const claims: Claim[] = [
       ev('pending_review', 'Routed to human review', 'Score 94 clears the threshold of 82, but RM46,800 exceeds the RM25,000 auto-approval limit — mandatory assessor sign-off.', 'WayFare policy engine', 'system', ago(12, 3)),
       ev('pending_review', 'Assessor note', 'Clinically well evidenced. Holding only for the high-value second-signature requirement.', 'Adrian Yeoh', 'insurance', ago(11), true),
     ],
+    decisionExplanation: null,
   },
 
   /* ---------------------- clm_012 — auto-approved, settlement failed on retry */
@@ -456,6 +467,7 @@ export const claims: Claim[] = [
       ev('verified', 'Gonka verification complete', 'Truth Score 95 · request gonka-req-d740e6b8.', 'Gonka Router', 'gonka', ago(8, 4)),
       ev('auto_approved', 'Auto-approval threshold met', 'Score 95 ≥ 90 and RM2,660 ≤ RM30,000 limit — no human review required.', 'WayFare policy engine', 'system', ago(8, 4)),
     ],
+    decisionExplanation: null,
   },
 
   /* ------------------- clm_013 — borderline score, awaiting the demo patient's insurer */
@@ -486,6 +498,7 @@ export const claims: Claim[] = [
       ev('verified', 'Gonka verification complete', 'Truth Score 74 · request gonka-req-a619b2f5.', 'Gonka Router', 'gonka', ago(12, 5)),
       ev('pending_review', 'Routed to human review', 'Score 74 is below the policy threshold of 85. Assigned to the medical assessment queue.', 'WayFare policy engine', 'system', ago(12, 5)),
     ],
+    decisionExplanation: null,
   },
 ]
 
