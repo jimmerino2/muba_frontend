@@ -398,7 +398,7 @@ const canSubmit = computed(
         <section
           v-if="routingPreview"
           class="surface border-l-2 p-4"
-          :class="routingPreview.withinLimit ? 'border-l-gonka-600' : 'border-l-amber-500'"
+          :class="routingPreview.withinLimit ? 'border-l-brand-600' : 'border-l-amber-500'"
         >
           <p class="text-xs font-medium uppercase tracking-wider text-mist-500">
             What happens after submission

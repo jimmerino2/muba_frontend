@@ -127,7 +127,7 @@ const EVENT_PRESENTATION: Record<
 > = {
   CLAIM_CREATED: { label: 'Claim drafted', actor: 'Hospital', actorRole: 'hospital', status: 'created' },
   CLAIM_SUBMITTED: { label: 'Submitted to insurer', actor: 'Hospital', actorRole: 'hospital', status: 'submitted' },
-  CLAIM_POLICY_VERIFIED: { label: 'Policy verified', actor: 'WayFare policy engine', actorRole: 'system', status: 'submitted' },
+  CLAIM_POLICY_VERIFIED: { label: 'Policy verified', actor: 'RICE policy engine', actorRole: 'system', status: 'submitted' },
   CLAIM_CLAUSES_ASSESSED: { label: 'Contract clauses assessed', actor: 'WayFare clause engine', actorRole: 'system', status: 'submitted', internal: true },
   CLAIM_VERIFIED: { label: 'Gonka verification complete', actor: 'Gonka Router', actorRole: 'gonka', status: 'verified' },
   // Decision default: the insurer, until the event's own metadata says a TPA
@@ -136,7 +136,7 @@ const EVENT_PRESENTATION: Record<
   // carries no such hint at all.
   CLAIM_APPROVED: { label: 'Claim approved', actor: 'Insurer', actorRole: 'insurance', status: 'approved' },
   CLAIM_REJECTED: { label: 'Claim rejected', actor: 'Insurer', actorRole: 'insurance', status: 'rejected' },
-  CLAIM_REVIEW_REQUESTED: { label: 'Routed to human review', actor: 'WayFare policy engine', actorRole: 'system', status: 'pending_review', internal: true },
+  CLAIM_REVIEW_REQUESTED: { label: 'Routed to human review', actor: 'RICE policy engine', actorRole: 'system', status: 'pending_review', internal: true },
   PAYMENT_INITIATED: { label: 'Settlement initiated', actor: 'Insurer', actorRole: 'insurance', status: 'approved' },
   PAYMENT_SETTLED: { label: 'Settled on Sui', actor: 'Sui testnet', actorRole: 'sui', status: 'paid' },
   PAYMENT_FAILED: { label: 'Settlement failed', actor: 'Sui testnet', actorRole: 'sui', status: 'approved' },
@@ -166,7 +166,7 @@ function decidingActor(
     metadata.decidingOrgType ?? metadata.reviewerOrgType ?? metadata.actorOrgType ?? metadata.orgType
   if (hint === 'TPA') return { actor: 'TPA', actorRole: 'tpa' }
   if (hint === 'INSURANCE') return { actor: 'Insurer', actorRole: 'insurance' }
-  if (hint === 'SYSTEM') return { actor: 'WayFare policy engine', actorRole: 'system' }
+  if (hint === 'SYSTEM') return { actor: 'RICE policy engine', actorRole: 'system' }
   return presentation
 }
 
@@ -291,7 +291,7 @@ function toDecision(claim: WireClaim, events: ClaimEvent[]): ClaimDecision | nul
   return {
     outcome: 'approved',
     reason: event?.detail || 'Approved for settlement.',
-    reviewerName: auto ? 'WayFare auto-approval' : 'Insurance assessor',
+    reviewerName: auto ? 'RICE auto-approval' : 'Insurance assessor',
     decidedAt: event?.timestamp ?? claim.updatedAt,
     approvedAmount: claim.approvedAmount,
   }

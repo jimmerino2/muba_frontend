@@ -17,7 +17,7 @@ const auth = useAuthStore();
 const router = useRouter();
 const route = useRoute();
 
-const routeLabel = computed(() => (route.meta.title as string | undefined) ?? "WayFare");
+const routeLabel = computed(() => (route.meta.title as string | undefined) ?? "RICE");
 
 /**
  * Active-nav test. `RouterLink`'s own active-class cannot be used here: it would
@@ -111,14 +111,10 @@ const ROLES: { key: Role; label: string }[] = [
       :class="mobileNavOpen ? 'translate-x-0' : '-translate-x-full'"
     >
       <div class="flex items-center gap-2.5 px-5 py-5">
-        <span
-          class="grid h-8 w-8 place-items-center rounded-lg bg-gonka-500 text-base font-bold text-ink-950"
-          aria-hidden="true"
-          >W</span
-        >
+        <img src="@/assets/logo.png" alt="RICE" class="h-9 w-9 shrink-0 rounded-full object-cover" />
         <div class="min-w-0">
-          <p class="text-sm font-semibold leading-tight tracking-tight text-mist-100">WayFare</p>
-          <p class="truncate text-2xs leading-tight text-mist-500">Claims coordination layer</p>
+          <p class="text-sm font-semibold leading-tight tracking-tight text-mist-100">RICE</p>
+          <p class="truncate text-2xs leading-tight text-mist-500">Reliable Insurance Claim Engine</p>
         </div>
       </div>
 
@@ -143,7 +139,7 @@ const ROLES: { key: Role; label: string }[] = [
         >
           <span
             class="w-4 text-center transition-colors"
-            :class="isActive(item.to) ? 'text-gonka-400' : 'text-mist-500 group-hover:text-gonka-400'"
+            :class="isActive(item.to) ? 'text-brand-400' : 'text-mist-500 group-hover:text-brand-400'"
             aria-hidden="true"
           >
             {{ item.glyph }}
@@ -196,7 +192,7 @@ const ROLES: { key: Role; label: string }[] = [
             class="rounded-md px-2.5 py-1.5 text-left text-xs transition-colors disabled:opacity-50"
             :class="
               option.key === role
-                ? 'bg-gonka-500/12 text-gonka-400 ring-1 ring-inset ring-gonka-600/40'
+                ? 'bg-brand-500/12 text-brand-400 ring-1 ring-inset ring-brand-600/40'
                 : 'text-mist-400 hover:bg-ink-850 hover:text-mist-200'
             "
             :disabled="switching"

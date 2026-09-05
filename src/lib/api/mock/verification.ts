@@ -103,14 +103,14 @@ export async function verifyClaim(
       'auto_approved',
       'Auto-approval threshold met',
       routing.reason,
-      'WayFare policy engine',
+      'RICE policy engine',
       'system',
     )
     claim.amountApproved = Math.max(0, claim.amountRequested - policy.deductible)
     claim.decision = {
       outcome: 'approved',
       reason: `Cleared automatically: ${routing.reason} RM${policy.deductible.toLocaleString('en-MY')} policy deductible applied.`,
-      reviewerName: 'WayFare auto-approval',
+      reviewerName: 'RICE auto-approval',
       decidedAt: new Date().toISOString(),
       approvedAmount: claim.amountApproved,
     }
@@ -121,7 +121,7 @@ export async function verifyClaim(
       'pending_review',
       'Routed to human review',
       routing.reason,
-      'WayFare policy engine',
+      'RICE policy engine',
       'system',
     )
   }

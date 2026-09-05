@@ -109,9 +109,9 @@ const nextStep = computed(() => {
       <!-- What this means for you, right now -->
       <div
         v-if="nextStep"
-        class="surface mb-5 flex items-start gap-3 border-l-2 border-l-gonka-600 p-4"
+        class="surface mb-5 flex items-start gap-3 border-l-2 border-l-brand-600 p-4"
       >
-        <span class="mt-0.5 text-gonka-400" aria-hidden="true">◈</span>
+        <span class="mt-0.5 text-brand-400" aria-hidden="true">◈</span>
         <div>
           <p class="text-xs font-medium uppercase tracking-wider text-mist-500">
             Status · {{ claimStatusLabel(data.claim.status) }}

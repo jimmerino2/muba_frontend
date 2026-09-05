@@ -89,7 +89,7 @@ const settle = (
   },
   {
     type: 'wayfare::settlement::SponsorGasPaid',
-    summary: 'Gas paid by the WayFare sponsor address; the payer signed without holding SUI.',
+    summary: 'Gas paid by the RICE sponsor address; the payer signed without holding SUI.',
   },
 ]
 

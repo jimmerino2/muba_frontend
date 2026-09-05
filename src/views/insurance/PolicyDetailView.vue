@@ -121,7 +121,7 @@ const utilisation = computed(() => {
         </div>
         <div class="mt-3 h-2 overflow-hidden rounded-full bg-ink-750">
           <div
-            class="h-full rounded-full bg-gonka-500 transition-[width] duration-700"
+            class="h-full rounded-full bg-brand-500 transition-[width] duration-700"
             :style="{ width: `${utilisation.percent}%` }"
           />
         </div>

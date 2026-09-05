@@ -131,7 +131,7 @@ const settle = useAction(async (mode: 'initiate' | 'retry') => {
           <p class="text-sm font-medium text-mist-100">Ready to settle</p>
           <p class="mt-0.5 text-sm text-mist-500">
             {{ money(data.payment.amount) }} ({{ usdc(data.payment.amountUsdc) }}) to
-            {{ data.payment.payeeName }}. Gas is paid by the WayFare sponsor address.
+            {{ data.payment.payeeName }}. Gas is paid by the RICE sponsor address.
           </p>
         </div>
         <button type="button" class="btn-sui" @click="settle.run('initiate')">

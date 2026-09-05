@@ -110,7 +110,7 @@ const columns: Column<MedicalRecord>[] = [
         <RouterLink
           v-if="row.claimId"
           :to="`/hospital/claims/${row.claimId}`"
-          class="text-xs text-gonka-400 hover:text-gonka-300"
+          class="text-xs text-brand-400 hover:text-brand-300"
           @click.stop
         >
           View claim →

@@ -98,30 +98,27 @@ async function signInAsDemo(email: string) {
         class="pointer-events-none absolute inset-0 opacity-[0.55]"
         style="
           background:
-            radial-gradient(700px 420px at 20% 10%, rgba(34, 201, 166, 0.16), transparent 62%),
+            radial-gradient(700px 420px at 20% 10%, rgba(62, 124, 184, 0.18), transparent 62%),
             radial-gradient(600px 400px at 78% 78%, rgba(124, 138, 255, 0.14), transparent 60%);
         "
         aria-hidden="true"
       />
 
       <div class="relative flex items-center gap-3">
-        <span
-          class="grid h-9 w-9 place-items-center rounded-lg bg-gonka-500 text-lg font-bold text-ink-950"
-          aria-hidden="true"
-        >W</span>
+        <img src="@/assets/logo.png" alt="RICE" class="h-9 w-9 shrink-0 rounded-full object-cover" />
         <div>
-          <p class="text-sm font-semibold tracking-tight text-mist-100">WayFare</p>
-          <p class="text-2xs text-mist-500">Claims coordination layer</p>
+          <p class="text-sm font-semibold tracking-tight text-mist-100">RICE</p>
+          <p class="text-2xs text-mist-500">Reliable Insurance Claim Engine</p>
         </div>
       </div>
 
       <div class="relative max-w-lg">
         <h1 class="text-[2.6rem] font-semibold leading-[1.1] tracking-tight text-mist-100">
           A medical claim should never be a
-          <span class="text-gonka-400">black box</span>.
+          <span class="text-brand-400">black box</span>.
         </h1>
         <p class="mt-5 text-base leading-relaxed text-mist-400">
-          WayFare puts the patient, the hospital and the insurer on one shared lifecycle. Every
+          RICE puts the patient, the hospital and the insurer on one shared lifecycle. Every
           claim carries a Gonka Truth Score, the reasoning behind it, and a traceable request ID —
           and every settlement leaves an auditable trail on Sui.
         </p>
@@ -169,13 +166,10 @@ async function signInAsDemo(email: string) {
     <section class="flex items-center justify-center px-5 py-12 sm:px-10">
       <div class="w-full max-w-md">
         <div class="mb-8 flex items-center gap-3 lg:hidden">
-          <span
-            class="grid h-9 w-9 place-items-center rounded-lg bg-gonka-500 text-lg font-bold text-ink-950"
-            aria-hidden="true"
-          >W</span>
+          <img src="@/assets/logo.png" alt="RICE" class="h-9 w-9 shrink-0 rounded-full object-cover" />
           <div>
-            <p class="text-sm font-semibold tracking-tight text-mist-100">WayFare</p>
-            <p class="text-2xs text-mist-500">Claims coordination layer</p>
+            <p class="text-sm font-semibold tracking-tight text-mist-100">RICE</p>
+            <p class="text-2xs text-mist-500">Reliable Insurance Claim Engine</p>
           </div>
         </div>
 
@@ -210,7 +204,7 @@ async function signInAsDemo(email: string) {
         <p v-if="auth.error" class="mt-3 text-sm leading-relaxed text-rose-300">{{ auth.error }}</p>
 
         <p class="mt-3 text-2xs leading-relaxed text-mist-500">
-          Your Sui address is derived from your Google identity and a salt held by WayFare — there
+          Your Sui address is derived from your Google identity and a salt held by RICE — there
           is no seed phrase to lose and no password to reset. Signing in again with the same Google
           account is the whole of account recovery.
         </p>

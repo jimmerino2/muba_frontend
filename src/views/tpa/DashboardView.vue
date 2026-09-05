@@ -107,7 +107,7 @@ const { data, loading, error, refresh } = useAsync(() => tpaApi.getDashboard(aut
             Claims awaiting verification or a decision within your delegated limit
           </p>
         </div>
-        <RouterLink to="/tpa/review" class="text-xs text-mist-500 hover:text-gonka-400">
+        <RouterLink to="/tpa/review" class="text-xs text-mist-500 hover:text-brand-400">
           Open review →
         </RouterLink>
       </header>

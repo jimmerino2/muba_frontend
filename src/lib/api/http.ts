@@ -146,7 +146,7 @@ export async function http<T>(path: string, options: RequestOptions = {}): Promi
     // on its own sends people hunting for a bug in the wrong place.
     throw new ApiError(
       0,
-      `Could not reach the WayFare backend at ${API_BASE_URL}. Is it running (npm run dev), and is this origin listed in its CORS_ORIGIN?`,
+      `Could not reach the RICE backend at ${API_BASE_URL}. Is it running (npm run dev), and is this origin listed in its CORS_ORIGIN?`,
       'NETWORK_UNAVAILABLE',
     )
   } finally {

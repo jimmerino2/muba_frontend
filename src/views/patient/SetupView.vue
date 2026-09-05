@@ -87,12 +87,9 @@ async function submit() {
   <div class="flex min-h-full items-center justify-center px-5 py-12 sm:px-10">
     <div class="w-full max-w-lg">
       <div class="mb-6 flex items-center gap-3">
-        <span
-          class="grid h-9 w-9 place-items-center rounded-lg bg-gonka-500 text-lg font-bold text-ink-950"
-          aria-hidden="true"
-        >W</span>
+        <img src="@/assets/logo.png" alt="RICE" class="h-9 w-9 shrink-0 rounded-full object-cover" />
         <div>
-          <p class="text-sm font-semibold tracking-tight text-mist-100">WayFare</p>
+          <p class="text-sm font-semibold tracking-tight text-mist-100">RICE</p>
           <p class="text-2xs text-mist-500">Claims coordination layer</p>
         </div>
       </div>
@@ -158,7 +155,7 @@ async function submit() {
       </form>
 
       <p class="mt-4 text-2xs leading-relaxed text-mist-500">
-        This information stays with WayFare and the organisations you interact with — never placed
+        This information stays with RICE and the organisations you interact with — never placed
         directly on Sui. Only claim references and settlement events are recorded on-chain.
       </p>
     </div>

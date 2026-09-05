@@ -65,7 +65,7 @@ export async function getDashboard(insurerId: string): Promise<InsuranceDashboar
   const decided = mine.filter((c) =>
     ['auto_approved', 'approved', 'rejected', 'paid', 'closed'].includes(c.status),
   )
-  const autoDecided = decided.filter((c) => c.decision?.reviewerName === 'WayFare auto-approval')
+  const autoDecided = decided.filter((c) => c.decision?.reviewerName === 'RICE auto-approval')
 
   const myPayments = payments.filter((p) => p.payerId === insurerId)
 

@@ -87,7 +87,7 @@ const policyUsed = computed(() => {
     <section class="mb-6">
       <div class="mb-3 flex items-center justify-between">
         <h2 class="label">Active insurance</h2>
-        <RouterLink to="/patient/policies" class="text-xs text-mist-500 hover:text-gonka-400">
+        <RouterLink to="/patient/policies" class="text-xs text-mist-500 hover:text-brand-400">
           View all policies →
         </RouterLink>
       </div>
@@ -178,7 +178,7 @@ const policyUsed = computed(() => {
       <section class="surface overflow-hidden">
         <header class="flex items-center justify-between border-b border-ink-700/70 px-5 py-3.5">
           <h2 class="text-sm font-semibold tracking-tight text-mist-100">Recent claims</h2>
-          <RouterLink to="/patient/claims" class="text-xs text-mist-500 hover:text-gonka-400">
+          <RouterLink to="/patient/claims" class="text-xs text-mist-500 hover:text-brand-400">
             View all →
           </RouterLink>
         </header>
@@ -214,7 +214,7 @@ const policyUsed = computed(() => {
       <section class="surface overflow-hidden">
         <header class="flex items-center justify-between border-b border-ink-700/70 px-5 py-3.5">
           <h2 class="text-sm font-semibold tracking-tight text-mist-100">Recent medical records</h2>
-          <RouterLink to="/patient/records" class="text-xs text-mist-500 hover:text-gonka-400">
+          <RouterLink to="/patient/records" class="text-xs text-mist-500 hover:text-brand-400">
             View all →
           </RouterLink>
         </header>
@@ -247,7 +247,7 @@ const policyUsed = computed(() => {
       <section class="surface overflow-hidden lg:col-span-2">
         <header class="flex items-center justify-between border-b border-ink-700/70 px-5 py-3.5">
           <h2 class="text-sm font-semibold tracking-tight text-mist-100">Recent payments</h2>
-          <RouterLink to="/patient/payments" class="text-xs text-mist-500 hover:text-gonka-400">
+          <RouterLink to="/patient/payments" class="text-xs text-mist-500 hover:text-brand-400">
             View all →
           </RouterLink>
         </header>
