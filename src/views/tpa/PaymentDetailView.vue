@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { computed, ref } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import { useAction, useAsync } from '@/lib/useAsync'
 import * as paymentsApi from '@/lib/api/payments'
+import * as tpaApi from '@/lib/api/tpa'
 import { money, usdc } from '@/lib/format'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import PaymentDetail from '@/components/PaymentDetail.vue'
+import PaymentHistoryList from '@/components/PaymentHistoryList.vue'
 import SkeletonBlock from '@/components/ui/SkeletonBlock.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 
@@ -17,13 +20,30 @@ import ErrorState from '@/components/ui/ErrorState.vue'
  */
 
 const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
 const paymentId = route.params.paymentId as string
 
 const { data, loading, error, refresh } = useAsync(async () => {
   const payment = await paymentsApi.getPaymentById(paymentId)
-  const transaction = await paymentsApi.getPaymentTransaction(paymentId)
-  return { payment, transaction }
+  const [transaction, history, claim] = await Promise.all([
+    paymentsApi.getPaymentTransaction(paymentId),
+    paymentsApi.getPayments({ claimId: payment.claimId }),
+    tpaApi.getClaimById(auth.orgId!, payment.claimId).catch(() => null),
+  ])
+  return { payment, transaction, history: history.data, claim: claim?.claim ?? null }
 })
+
+const outstanding = computed(() => data.value?.claim?.outstandingAmount ?? 0)
+
+const createTopUp = useAction(async () => {
+  if (!data.value?.claim) return null
+  return paymentsApi.createAdditionalPayment(data.value.claim.id)
+})
+async function makeAnotherPayment() {
+  const created = await createTopUp.run()
+  if (created) await router.push(`/tpa/payments/${created.id}`)
+}
 
 const SETTLE_STEPS = [
   'Building the transfer transaction',
@@ -142,7 +162,38 @@ const settle = useAction(async (mode: 'initiate' | 'retry') => {
 
       <p v-if="settle.error.value" class="mb-5 text-sm text-rose-300">{{ settle.error.value }}</p>
 
+      <!-- A settled payment that didn't fully cover the claim leaves a
+           balance the TPA can still act on from right here. -->
+      <div
+        v-if="data.payment.status === 'completed' && outstanding > 0"
+        class="surface mb-5 flex flex-wrap items-center justify-between gap-4 border-l-2 border-l-amber-500 p-4"
+      >
+        <div>
+          <p class="text-sm font-medium text-mist-100">Claim still has an outstanding balance</p>
+          <p class="mt-0.5 text-sm text-mist-500">
+            {{ money(outstanding) }} of the approved amount has not been paid yet.
+          </p>
+        </div>
+        <button
+          type="button"
+          class="btn-sui"
+          :disabled="createTopUp.pending.value"
+          @click="makeAnotherPayment"
+        >
+          {{ createTopUp.pending.value ? 'Creating…' : `Pay remaining ${money(outstanding)}` }}
+        </button>
+      </div>
+      <p v-if="createTopUp.error.value" class="mb-5 text-sm text-rose-300">{{ createTopUp.error.value }}</p>
+
       <PaymentDetail :payment="data.payment" :transaction="data.transaction" />
+
+      <PaymentHistoryList
+        v-if="data.history.length > 1"
+        :payments="data.history"
+        :current-payment-id="data.payment.id"
+        :payment-path="(id) => `/tpa/payments/${id}`"
+        class="mt-5"
+      />
     </template>
   </div>
 </template>

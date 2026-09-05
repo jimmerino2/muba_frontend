@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { MedicalRecord } from '@/lib/types'
+import type { Claim, ClaimLineItem, MedicalRecord } from '@/lib/types'
 import { date, fileSize, money, titleCase } from '@/lib/format'
 import DetailList from '@/components/ui/DetailList.vue'
 
 /**
  * The record body, shared by the patient (read-only) and provider views. Only the
- * surrounding page chrome and actions differ between the two.
+ * surrounding page chrome and actions differ between the two. `claim` is optional —
+ * a record with no claim raised yet (or whose claim hasn't loaded) just shows the
+ * bill with no coverage/owed columns.
  */
-const props = defineProps<{ record: MedicalRecord }>()
+const props = defineProps<{ record: MedicalRecord; claim?: Claim | null }>()
 
 const facts = computed(() => [
   { label: 'Record number', value: props.record.recordNumber, mono: true },
@@ -19,17 +21,54 @@ const facts = computed(() => [
   { label: 'ICD-10 code', value: props.record.icd10Code, mono: true },
 ])
 
+/**
+ * A claim is decided per line item, so coverage/owed are matched back to each
+ * billed line by description rather than derived from the claim total. An item
+ * with no matching claim line (or no claim at all) is simply undecided.
+ */
+const claimItemsByDescription = computed(() => {
+  const map = new Map<string, ClaimLineItem>()
+  for (const item of props.claim?.lineItems ?? []) map.set(item.description, item)
+  return map
+})
+
+type LineStatus = 'no-claim' | 'pending' | 'covered' | 'owed'
+
+function statusFor(description: string): { status: LineStatus; covered: number; owed: number } {
+  if (!props.claim) return { status: 'no-claim', covered: 0, owed: 0 }
+  const match = claimItemsByDescription.value.get(description)
+  if (!match || (match.approved === null && match.denied === null)) {
+    return { status: 'pending', covered: 0, owed: 0 }
+  }
+  if (match.approved) return { status: 'covered', covered: match.amount, owed: 0 }
+  return { status: 'owed', covered: 0, owed: match.amount }
+}
+
 /** Grouped so the bill reads as a bill, not an undifferentiated list. */
 const grouped = computed(() => {
-  const map = new Map<string, { category: string; items: typeof props.record.lineItems; total: number }>()
+  const map = new Map<
+    string,
+    { category: string; items: (typeof props.record.lineItems[number] & ReturnType<typeof statusFor>)[]; total: number }
+  >()
   for (const item of props.record.lineItems) {
     const entry = map.get(item.category) ?? { category: item.category, items: [], total: 0 }
-    entry.items.push(item)
+    entry.items.push({ ...item, ...statusFor(item.description) })
     entry.total += item.amount
     map.set(item.category, entry)
   }
   return [...map.values()].sort((a, b) => b.total - a.total)
 })
+
+/** Whether any line item has actually been decided yet — governs showing the totals footer. */
+const hasDecidedItems = computed(() =>
+  (props.claim?.lineItems ?? []).some((item) => item.approved !== null || item.denied !== null),
+)
+const totalCovered = computed(() =>
+  grouped.value.reduce((sum, group) => sum + group.items.reduce((s, i) => s + i.covered, 0), 0),
+)
+const totalOwed = computed(() =>
+  grouped.value.reduce((sum, group) => sum + group.items.reduce((s, i) => s + i.owed, 0), 0),
+)
 </script>
 
 <template>
@@ -60,12 +99,39 @@ const grouped = computed(() => {
           <li
             v-for="item in group.items"
             :key="item.description"
-            class="flex items-center justify-between gap-4 px-5 py-2.5"
+            class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 py-2.5"
           >
-            <span class="text-sm text-mist-300">{{ item.description }}</span>
-            <span class="tnum shrink-0 text-sm text-mist-200">{{ money(item.amount) }}</span>
+            <span class="min-w-0 flex-1 text-sm text-mist-300">{{ item.description }}</span>
+
+            <div class="flex shrink-0 items-center gap-4">
+              <template v-if="item.status === 'covered'">
+                <span class="tnum text-xs text-emerald-300">{{ money(item.covered) }} covered</span>
+              </template>
+              <template v-else-if="item.status === 'owed'">
+                <span class="tnum text-xs text-amber-300">{{ money(item.owed) }} you owe</span>
+              </template>
+              <template v-else-if="item.status === 'pending'">
+                <span class="text-2xs text-mist-500">Pending decision</span>
+              </template>
+
+              <span class="tnum text-sm text-mist-200">{{ money(item.amount) }}</span>
+            </div>
           </li>
         </ul>
+      </div>
+
+      <div
+        v-if="hasDecidedItems"
+        class="flex flex-wrap items-center justify-end gap-x-8 gap-y-2 border-t border-ink-700/70 bg-ink-900/40 px-5 py-3"
+      >
+        <div class="text-right">
+          <p class="label">Covered</p>
+          <p class="tnum mt-0.5 text-sm font-semibold text-emerald-300">{{ money(totalCovered) }}</p>
+        </div>
+        <div class="text-right">
+          <p class="label">Total left (you owe)</p>
+          <p class="tnum mt-0.5 text-sm font-semibold text-amber-300">{{ money(totalOwed) }}</p>
+        </div>
       </div>
     </section>
 

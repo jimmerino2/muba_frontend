@@ -200,6 +200,66 @@ export async function rejectClaim(
   return respond(claim, 400, 700)
 }
 
+export interface LineItemDecision {
+  lineItemId: string
+  approved: boolean
+  reason?: string
+}
+
+/** See mock/insurance.ts decideLineItems — the same per-line-item review,
+ * gated the same way approveClaim/rejectClaim above already are. */
+export async function decideLineItems(
+  tpaId: string,
+  claimId: string,
+  reviewerName: string,
+  decisions: LineItemDecision[],
+): Promise<Claim> {
+  const claim = claimRef(claimId)
+  if (claim.tpaId !== tpaId) throw notFound('Claim', claimId)
+  assertDecidable(claim)
+  if (!withinTpaLimit(claim)) {
+    throw badRequest(
+      'This claim exceeds your delegated approval limit — it must be decided by the insurer.',
+    )
+  }
+  if (decisions.length === 0) throw badRequest('Decide at least one line item.')
+  if (decisions.length !== claim.lineItems.length || !decisions.every((d) => claim.lineItems.some((li) => li.id === d.lineItemId))) {
+    throw badRequest('Every line item on this claim must be decided exactly once.')
+  }
+  const deniedWithoutReason = decisions.find((d) => !d.approved && !d.reason?.trim())
+  if (deniedWithoutReason) throw badRequest('A denied line item must record a reason.')
+
+  claim.lineItems = claim.lineItems.map((item) => {
+    const decision = decisions.find((d) => d.lineItemId === item.id)!
+    return { ...item, approved: decision.approved, denied: !decision.approved, reason: decision.reason?.trim() || null }
+  })
+  const approvedAmount = claim.lineItems.filter((li) => li.approved).reduce((total, li) => total + li.amount, 0)
+  const deniedAmount = claim.lineItems.filter((li) => li.denied).reduce((total, li) => total + li.amount, 0)
+
+  claim.status = approvedAmount > 0 ? 'approved' : 'rejected'
+  claim.amountApproved = approvedAmount > 0 ? approvedAmount : null
+  claim.amountDenied = deniedAmount
+  claim.patientResponsibility = Math.max(claim.amountRequested - approvedAmount, 0)
+  claim.decision = {
+    outcome: approvedAmount > 0 ? 'approved' : 'rejected',
+    reason: decisions.find((d) => !d.approved)?.reason?.trim() || 'Reviewed line by line.',
+    reviewerName,
+    decidedAt: now(),
+    approvedAmount,
+  }
+  appendEvent(
+    claim,
+    claim.status,
+    approvedAmount > 0 ? 'Approved by TPA' : 'Rejected by TPA',
+    `Approved ${approvedAmount.toLocaleString('en-MY')}, denied ${deniedAmount.toLocaleString('en-MY')} across ${claim.lineItems.length} line item(s).`,
+    reviewerName,
+    'tpa',
+  )
+  if (approvedAmount > 0) ensurePayment(claim)
+
+  return respond(claim, 400, 700)
+}
+
 /** POST /api/tpa/claims/:claimId/request-review */
 export async function requestMoreInfo(
   tpaId: string,

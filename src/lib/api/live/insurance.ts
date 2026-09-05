@@ -268,6 +268,44 @@ export async function rejectClaim(
   return hydrateClaim(claim)
 }
 
+export interface LineItemDecision {
+  lineItemId: string
+  approved: boolean
+  reason?: string
+}
+
+/**
+ * `POST /api/claims/:id/review` with a per-line-item decision array —
+ * every line item on the claim must be covered exactly once. Replaces
+ * approveClaim/rejectClaim as the primary review action (ReviewDetailView.vue);
+ * those two remain only for callers that still want the old whole-claim
+ * shape. `decision` is sent alongside as a best-effort summary — the
+ * backend derives the real approved/denied split from `lineItems` itself.
+ */
+export async function decideLineItems(
+  insurerId: string,
+  claimId: string,
+  _reviewerName: string,
+  decisions: LineItemDecision[],
+): Promise<Claim> {
+  if (decisions.length === 0) throw badRequest('Decide at least one line item.')
+  const deniedWithoutReason = decisions.find((d) => !d.approved && !d.reason?.trim())
+  if (deniedWithoutReason) throw badRequest('A denied line item must record a reason.')
+
+  const existing = await http<WireClaim>(`/api/claims/${claimId}`)
+  if (!existing || !visibleToInsurer(existing, insurerId)) throw notFound('Claim', claimId)
+
+  const claim = await http<WireClaim>(`/api/claims/${claimId}/review`, {
+    method: 'POST',
+    body: {
+      decision: decisions.some((d) => d.approved) ? 'approve' : 'reject',
+      lineItems: decisions,
+    },
+  })
+  invalidatePayments()
+  return hydrateClaim(claim)
+}
+
 /**
  * "Request more information."
  *

@@ -30,7 +30,7 @@ const rows = computed(() => {
 })
 
 const columns: Column<MedicalRecord>[] = [
-  { key: 'patientName', label: 'Patient', sortable: true },
+  { key: 'patientName', label: 'Patient', sortable: true, width: 'w-44' },
   { key: 'diagnosis', label: 'Diagnosis', sortable: true },
   { key: 'visitDate', label: 'Visit', sortable: true, width: 'w-32', hideOnMobile: true },
   { key: 'admissionType', label: 'Type', sortable: true, width: 'w-32', hideOnMobile: true },
@@ -82,9 +82,9 @@ const columns: Column<MedicalRecord>[] = [
       </template>
 
       <template #cell-diagnosis="{ row }">
-        <div class="min-w-0">
-          <p class="truncate text-mist-200">{{ row.diagnosis }}</p>
-          <p class="truncate text-xs text-mist-500">
+        <div>
+          <p class="break-words text-mist-200">{{ row.diagnosis }}</p>
+          <p class="break-words text-xs text-mist-500">
             {{ row.department }} · {{ row.documents.length }} document{{
               row.documents.length === 1 ? '' : 's'
             }}

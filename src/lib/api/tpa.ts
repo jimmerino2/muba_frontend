@@ -8,7 +8,7 @@ import * as mock from './mock/tpa'
  */
 const impl = API_MODE === 'mock' ? (mock as unknown as typeof live) : live
 
-export type { TpaClaimDetail } from './live/tpa'
+export type { LineItemDecision, TpaClaimDetail } from './live/tpa'
 
 export const {
   getDashboard,
@@ -17,6 +17,7 @@ export const {
   getClaimById,
   approveClaim,
   rejectClaim,
+  decideLineItems,
   requestMoreInfo,
   getPayments,
 } = impl

@@ -11,6 +11,7 @@ import * as paymentsApi from '@/lib/api/payments'
 import { date, money } from '@/lib/format'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import ClaimStatusBadge from '@/components/ClaimStatusBadge.vue'
+import ClaimFinancialSummary from '@/components/ClaimFinancialSummary.vue'
 import TruthScorePanel from '@/components/TruthScorePanel.vue'
 import VerificationSteps from '@/components/VerificationSteps.vue'
 import RoutingOutcomeCard from '@/components/RoutingOutcomeCard.vue'
@@ -161,37 +162,7 @@ const decidable = computed(() => {
         </p>
       </div>
 
-      <section class="surface mb-5 p-5">
-        <div class="flex flex-wrap items-end gap-x-10 gap-y-5">
-          <div>
-            <p class="label">Amount claimed</p>
-            <p class="tnum mt-1 text-2xl font-semibold tracking-tight text-mist-100">
-              {{ money(data.claim.amountRequested) }}
-            </p>
-          </div>
-          <div>
-            <p class="label">Approved</p>
-            <p
-              class="tnum mt-1 text-2xl font-semibold tracking-tight"
-              :class="data.claim.amountApproved === null ? 'text-mist-500' : 'text-emerald-300'"
-            >
-              {{ data.claim.amountApproved === null ? 'Pending' : money(data.claim.amountApproved) }}
-            </p>
-          </div>
-          <div>
-            <p class="label">Your delegated limit</p>
-            <p class="tnum mt-1 text-2xl font-semibold tracking-tight text-mist-400">
-              {{ data.policy.tpaApprovalLimit !== null ? money(data.policy.tpaApprovalLimit) : '—' }}
-            </p>
-          </div>
-          <div>
-            <p class="label">Score threshold</p>
-            <p class="tnum mt-1 text-2xl font-semibold tracking-tight text-gonka-400">
-              {{ data.policy.truthScoreThreshold }}
-            </p>
-          </div>
-        </div>
-      </section>
+      <ClaimFinancialSummary :claim="data.claim" show-line-items class="mb-5" />
 
       <div class="mb-5">
         <TruthScorePanel

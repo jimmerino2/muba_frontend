@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAsync } from '@/lib/useAsync'
@@ -14,6 +15,13 @@ const auth = useAuthStore()
 
 const { data, loading, error, refresh } = useAsync(() =>
   patientsApi.getMyRecordById(auth.patientId!, route.params.recordId as string),
+)
+
+/** Loaded once the record itself is in, so the coverage/owed split can render alongside the bill. */
+const claimId = computed(() => data.value?.claimId ?? null)
+const { data: claim } = useAsync(
+  () => (claimId.value ? patientsApi.getMyClaimById(auth.patientId!, claimId.value) : Promise.resolve(null)),
+  { watch: [claimId] },
 )
 </script>
 
@@ -63,7 +71,7 @@ const { data, loading, error, refresh } = useAsync(() =>
         </div>
       </div>
 
-      <RecordDetail :record="data" />
+      <RecordDetail :record="data" :claim="claim" />
     </template>
   </div>
 </template>

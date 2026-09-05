@@ -5,6 +5,7 @@ import type {
   Claim,
   ClaimDecision,
   ClaimEvent,
+  ClaimLineItem,
   ClaimStatus,
   MedicalRecord,
   Organization,
@@ -21,6 +22,7 @@ import type {
   WireChainStatus,
   WireClaim,
   WireClaimEvent,
+  WireClaimLineItem,
   WireClaimStatus,
   WireGonkaRequest,
   WireMedicalRecord,
@@ -295,6 +297,26 @@ function toDecision(claim: WireClaim, events: ClaimEvent[]): ClaimDecision | nul
 
 /* ---------------------------------------------------------------- claims */
 
+const RECORD_CATEGORIES: RecordCategory[] = [
+  'Room & Board',
+  'Procedure',
+  'Medication',
+  'Diagnostics',
+  'Consultation',
+]
+
+function toClaimLineItem(item: WireClaimLineItem): ClaimLineItem {
+  return {
+    id: item.id,
+    description: item.description,
+    category: RECORD_CATEGORIES.find((c) => c === item.category) ?? 'Procedure',
+    amount: item.amount,
+    approved: item.approved,
+    denied: item.denied,
+    reason: item.reason,
+  }
+}
+
 export function toClaim(claim: WireClaim, names: ClaimNames, events: ClaimEvent[] = []): Claim {
   return {
     id: claim.id,
@@ -316,6 +338,7 @@ export function toClaim(claim: WireClaim, names: ClaimNames, events: ClaimEvent[
     diagnosis: names.diagnosis || claim.treatmentDescription,
     amountRequested: claim.claimAmount,
     amountApproved: claim.approvedAmount,
+    amountDenied: claim.deniedAmount,
     currency: 'MYR',
     status: toClaimStatus(claim.status, claim.approvedAutomatically),
     createdAt: claim.createdAt,
@@ -325,6 +348,10 @@ export function toClaim(claim: WireClaim, names: ClaimNames, events: ClaimEvent[
     paymentId: names.paymentId,
     timeline: events,
     decisionExplanation: claim.decisionExplanation,
+    lineItems: claim.lineItems.map(toClaimLineItem),
+    amountPaid: claim.paidAmount,
+    outstandingAmount: claim.outstandingAmount,
+    patientResponsibility: claim.patientResponsibility,
   }
 }
 
@@ -406,14 +433,6 @@ export function toOrganization(org: WireOrganization): Organization {
 }
 
 /* --------------------------------------------------------------- records */
-
-const RECORD_CATEGORIES: RecordCategory[] = [
-  'Room & Board',
-  'Procedure',
-  'Medication',
-  'Diagnostics',
-  'Consultation',
-]
 
 function toLineItem(item: { description: string; category: string; amount: number }): RecordLineItem {
   const category = RECORD_CATEGORIES.find((c) => c === item.category) ?? 'Procedure'

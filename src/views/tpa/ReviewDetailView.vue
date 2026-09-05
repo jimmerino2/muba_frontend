@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAction, useAsync } from '@/lib/useAsync'
@@ -30,17 +30,26 @@ const { data, loading, error, refresh } = useAsync(async () => {
   return { ...detail, verification, attestation }
 })
 
-type Outcome = 'approve' | 'reject' | 'more_info'
-const outcome = ref<Outcome>('approve')
-const reason = ref('')
-const approvedAmount = ref<number>(0)
+/**
+ * Per-line-item outcome, keyed by line item id — the primary decision this
+ * screen records. There is no whole-claim approve/reject shortcut any more:
+ * every item defaults to "approved" (the common case) but each one is its
+ * own toggle, and a denial only submits with a reason attached.
+ */
+const itemDecisions = reactive<Record<string, { approved: boolean; reason: string }>>({})
 
-/** Default the payable amount to claimed-less-deductible, which the TPA can override. */
-watch(data, (next) => {
-  if (next && !approvedAmount.value) {
-    approvedAmount.value = Math.max(0, next.claim.amountRequested - next.policy.deductible)
-  }
-})
+watch(
+  data,
+  (next) => {
+    if (!next) return
+    for (const item of next.claim.lineItems) {
+      if (!(item.id in itemDecisions)) {
+        itemDecisions[item.id] = { approved: item.approved ?? true, reason: item.reason ?? '' }
+      }
+    }
+  },
+  { immediate: true },
+)
 
 /** Only decidable here when it is both open for a decision AND still within
  * the delegated limit — a claim that has escalated is the insurer's alone. */
@@ -57,50 +66,63 @@ const decidable = computed(
     (data.value?.claim.status === 'pending_review' || data.value?.claim.status === 'verified'),
 )
 
+const approvedTotal = computed(() =>
+  (data.value?.claim.lineItems ?? [])
+    .filter((item) => itemDecisions[item.id]?.approved)
+    .reduce((total, item) => total + item.amount, 0),
+)
+const deniedTotal = computed(() =>
+  (data.value?.claim.lineItems ?? [])
+    .filter((item) => !itemDecisions[item.id]?.approved)
+    .reduce((total, item) => total + item.amount, 0),
+)
+
+/** Every denied item needs a reason on record before the decision can submit
+ * — the UI should make an unexplained denial impossible, not just discouraged. */
 const canSubmit = computed(() => {
-  if (!decidable.value || !reason.value.trim()) return false
-  if (outcome.value !== 'approve') return true
-  const amount = Number(approvedAmount.value)
-  return amount >= 0 && amount <= (data.value?.claim.amountRequested ?? 0)
+  if (!decidable.value || !data.value) return false
+  return data.value.claim.lineItems.every((item) => {
+    const d = itemDecisions[item.id]
+    return d && (d.approved || d.reason.trim().length > 0)
+  })
 })
 
 const decide = useAction(async () => {
   const reviewer = auth.user!.name
-  const body = { reason: reason.value }
-
-  if (outcome.value === 'approve') {
-    await tpaApi.approveClaim(auth.orgId!, claimId, reviewer, {
-      ...body,
-      approvedAmount: Number(approvedAmount.value),
-    })
-  } else if (outcome.value === 'reject') {
-    await tpaApi.rejectClaim(auth.orgId!, claimId, reviewer, body)
-  } else {
-    await tpaApi.requestMoreInfo(auth.orgId!, claimId, reviewer, body)
-  }
+  const decisions = data.value!.claim.lineItems.map((item) => {
+    const d = itemDecisions[item.id]!
+    return {
+      lineItemId: item.id,
+      approved: d.approved,
+      ...(d.approved ? {} : { reason: d.reason.trim() }),
+    }
+  })
+  await tpaApi.decideLineItems(auth.orgId!, claimId, reviewer, decisions)
   return true
 })
 
 async function submit() {
   const ok = await decide.run()
-  if (!ok) return
-  if (outcome.value === 'more_info') {
-    reason.value = ''
-    await refresh()
-  } else {
-    await router.push(`/tpa/claims/${claimId}`)
-  }
+  if (ok) await router.push(`/tpa/claims/${claimId}`)
 }
 
-const OUTCOMES: { value: Outcome; label: string; hint: string }[] = [
-  { value: 'approve', label: 'Approve', hint: 'Clear for settlement and create the payout' },
-  { value: 'reject', label: 'Reject', hint: 'Decline the claim, with a reason on the record' },
-  {
-    value: 'more_info',
-    label: 'Request more info',
-    hint: 'Keep it open and record a query to the provider',
-  },
-]
+/* ------------------------------------------------------- request more info */
+// Kept as a secondary, distinctly-shaped action so it can never be mistaken
+// for a line-item decision: it leaves the claim open and records a note
+// rather than approving or denying anything.
+const showMoreInfo = ref(false)
+const moreInfoReason = ref('')
+const requestInfo = useAction(async () => {
+  await tpaApi.requestMoreInfo(auth.orgId!, claimId, auth.user!.name, { reason: moreInfoReason.value })
+  return true
+})
+async function submitMoreInfo() {
+  const ok = await requestInfo.run()
+  if (!ok) return
+  moreInfoReason.value = ''
+  showMoreInfo.value = false
+  await refresh()
+}
 
 const context = computed(() => {
   const d = data.value
@@ -190,122 +212,120 @@ const context = computed(() => {
         </div>
 
         <!-- Decision column -->
-        <form class="surface sticky top-20 overflow-hidden" @submit.prevent="submit">
-          <header class="border-b border-ink-700/70 px-5 py-3.5">
-            <h2 class="text-sm font-semibold tracking-tight text-mist-100">Record a decision</h2>
-            <p class="mt-0.5 text-xs text-mist-500">
-              Your reasoning is written to the claim timeline and shown to the patient.
-            </p>
-          </header>
-
-          <div class="space-y-4 p-5">
-            <div>
-              <p class="label mb-1.5">Amount claimed</p>
-              <p class="tnum text-2xl font-semibold tracking-tight text-mist-100">
-                {{ money(data.claim.amountRequested) }}
+        <div class="sticky top-20 space-y-4">
+          <form class="surface overflow-hidden" @submit.prevent="submit">
+            <header class="border-b border-ink-700/70 px-5 py-3.5">
+              <h2 class="text-sm font-semibold tracking-tight text-mist-100">
+                Decide each line item
+              </h2>
+              <p class="mt-0.5 text-xs text-mist-500">
+                Reasoning for a denial is written to the claim timeline and shown to the patient.
               </p>
-            </div>
+            </header>
 
-            <fieldset :disabled="!decidable">
-              <legend class="label mb-2">Outcome</legend>
-              <div class="space-y-2">
-                <label
-                  v-for="option in OUTCOMES"
-                  :key="option.value"
-                  class="flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors"
-                  :class="[
-                    outcome === option.value
-                      ? option.value === 'approve'
-                        ? 'border-emerald-500/45 bg-emerald-500/[0.07]'
-                        : option.value === 'reject'
-                          ? 'border-rose-500/45 bg-rose-500/[0.07]'
-                          : 'border-amber-500/45 bg-amber-500/[0.07]'
-                      : 'border-ink-700 hover:border-ink-600',
-                    !decidable ? 'opacity-50' : '',
-                  ]"
-                >
-                  <input
-                    v-model="outcome"
-                    type="radio"
-                    name="outcome"
-                    :value="option.value"
-                    class="mt-1 h-3.5 w-3.5 shrink-0 accent-[#22C9A6]"
-                  />
-                  <div>
-                    <p class="text-sm font-medium text-mist-100">{{ option.label }}</p>
-                    <p class="mt-0.5 text-xs leading-relaxed text-mist-500">{{ option.hint }}</p>
+            <fieldset :disabled="!decidable" class="divide-y divide-ink-800/80">
+              <div v-for="item in data.claim.lineItems" :key="item.id" class="space-y-3 p-5">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <p class="truncate text-sm font-medium text-mist-100">{{ item.description }}</p>
+                    <p class="mt-0.5 text-2xs text-mist-500">{{ item.category }}</p>
                   </div>
-                </label>
+                  <p class="tnum shrink-0 text-sm font-semibold text-mist-100">{{ money(item.amount) }}</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    class="rounded-lg border px-3 py-2 text-sm font-medium transition-colors"
+                    :class="
+                      itemDecisions[item.id]?.approved
+                        ? 'border-emerald-500/45 bg-emerald-500/[0.08] text-emerald-300'
+                        : 'border-ink-700 text-mist-400 hover:border-ink-600'
+                    "
+                    @click="itemDecisions[item.id] = { approved: true, reason: '' }"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-lg border px-3 py-2 text-sm font-medium transition-colors"
+                    :class="
+                      itemDecisions[item.id] && !itemDecisions[item.id]!.approved
+                        ? 'border-rose-500/45 bg-rose-500/[0.08] text-rose-300'
+                        : 'border-ink-700 text-mist-400 hover:border-ink-600'
+                    "
+                    @click="itemDecisions[item.id] = { approved: false, reason: itemDecisions[item.id]?.reason ?? '' }"
+                  >
+                    Deny
+                  </button>
+                </div>
+
+                <div v-if="itemDecisions[item.id] && !itemDecisions[item.id]!.approved">
+                  <textarea
+                    v-model="itemDecisions[item.id]!.reason"
+                    rows="2"
+                    class="field resize-y text-sm"
+                    placeholder="Reason this item is not covered (required)"
+                  />
+                </div>
               </div>
             </fieldset>
 
-            <div v-if="outcome === 'approve'">
-              <label for="approved-amount" class="label mb-1.5 block">Approved amount (MYR)</label>
-              <input
-                id="approved-amount"
-                v-model.number="approvedAmount"
-                type="number"
-                min="0"
-                :max="data.claim.amountRequested"
-                step="0.01"
-                class="field tnum"
-                :disabled="!decidable"
-              />
-              <p class="mt-1.5 text-xs text-mist-500">
-                Defaults to the claim less the {{ money(data.policy.deductible) }} deductible.
+            <div class="space-y-3 border-t border-ink-700/70 p-5">
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-mist-400">Approved</span>
+                <span class="tnum font-semibold text-emerald-300">{{ money(approvedTotal) }}</span>
+              </div>
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-mist-400">Denied</span>
+                <span class="tnum font-semibold text-rose-300">{{ money(deniedTotal) }}</span>
+              </div>
+
+              <p v-if="decide.error.value" class="text-sm text-rose-300">{{ decide.error.value }}</p>
+
+              <button
+                type="submit"
+                class="btn-primary w-full"
+                :disabled="!canSubmit || decide.pending.value"
+              >
+                {{ decide.pending.value ? 'Recording…' : `Submit decision — ${money(approvedTotal)} approved` }}
+              </button>
+
+              <p class="text-xs leading-relaxed text-mist-500">
+                Approving any amount creates a pending payout to {{ data.claim.hospitalName }}.
+                Settlement is triggered separately from the Payments screen.
               </p>
             </div>
+          </form>
 
-            <div>
-              <label for="reason" class="label mb-1.5 block">
-                {{ outcome === 'more_info' ? 'What do you need from the provider?' : 'Reasoning' }}
-              </label>
-              <textarea
-                id="reason"
-                v-model="reason"
-                rows="5"
-                class="field resize-y"
-                :disabled="!decidable"
-                :placeholder="
-                  outcome === 'approve'
-                    ? 'What in the evidence supports approval?'
-                    : outcome === 'reject'
-                      ? 'Which policy term or missing evidence drives the rejection?'
-                      : 'Name the specific document or clarification required.'
-                "
-              />
-              <p class="mt-1.5 text-xs text-mist-500">
-                Be specific. The Truth Score is decision support — this reasoning is the decision.
-              </p>
-            </div>
-
-            <p v-if="decide.error.value" class="text-sm text-rose-300">{{ decide.error.value }}</p>
-
+          <!-- Secondary, deliberately separate from the line-item decision above -->
+          <div class="surface p-4">
             <button
-              type="submit"
-              class="w-full"
-              :class="
-                outcome === 'reject' ? 'btn-danger' : outcome === 'approve' ? 'btn-primary' : 'btn-ghost'
-              "
-              :disabled="!canSubmit || decide.pending.value"
+              type="button"
+              class="text-xs text-mist-400 hover:text-mist-200"
+              :disabled="!decidable"
+              @click="showMoreInfo = !showMoreInfo"
             >
-              {{
-                decide.pending.value
-                  ? 'Recording…'
-                  : outcome === 'approve'
-                    ? `Approve ${money(Number(approvedAmount))}`
-                    : outcome === 'reject'
-                      ? 'Reject claim'
-                      : 'Send query to provider'
-              }}
+              {{ showMoreInfo ? 'Cancel query' : 'Or request more information from the provider →' }}
             </button>
-
-            <p v-if="outcome === 'approve'" class="text-xs leading-relaxed text-mist-500">
-              Approving creates a pending payout to {{ data.claim.hospitalName }}. Settlement is
-              triggered separately from the Payments screen.
-            </p>
+            <form v-if="showMoreInfo" class="mt-3 space-y-2" @submit.prevent="submitMoreInfo">
+              <textarea
+                v-model="moreInfoReason"
+                rows="3"
+                class="field resize-y text-sm"
+                placeholder="Name the specific document or clarification required."
+              />
+              <p v-if="requestInfo.error.value" class="text-xs text-rose-300">{{ requestInfo.error.value }}</p>
+              <button
+                type="submit"
+                class="btn-ghost w-full"
+                :disabled="!moreInfoReason.trim() || requestInfo.pending.value"
+              >
+                {{ requestInfo.pending.value ? 'Sending…' : 'Send query to provider' }}
+              </button>
+            </form>
           </div>
-        </form>
+        </div>
       </div>
     </template>
   </div>

@@ -248,6 +248,44 @@ export async function rejectClaim(
   return hydrateClaim(claim)
 }
 
+export interface LineItemDecision {
+  lineItemId: string
+  approved: boolean
+  reason?: string
+}
+
+/** See `live/insurance.ts`'s decideLineItems — the same per-line-item
+ * review action, gated the same way approveClaim/rejectClaim above already
+ * are (visible to this TPA, and within its delegated approval limit). */
+export async function decideLineItems(
+  tpaId: string,
+  claimId: string,
+  _reviewerName: string,
+  decisions: LineItemDecision[],
+): Promise<Claim> {
+  if (decisions.length === 0) throw badRequest('Decide at least one line item.')
+  const deniedWithoutReason = decisions.find((d) => !d.approved && !d.reason?.trim())
+  if (deniedWithoutReason) throw badRequest('A denied line item must record a reason.')
+
+  const existing = await http<WireClaim>(`/api/claims/${claimId}`)
+  if (!existing || !visibleToTpa(existing, tpaId)) throw notFound('Claim', claimId)
+  if (!(await withinTpaLimit(existing))) {
+    throw badRequest(
+      'This claim exceeds your delegated approval limit — it must be decided by the insurer.',
+    )
+  }
+
+  const claim = await http<WireClaim>(`/api/claims/${claimId}/review`, {
+    method: 'POST',
+    body: {
+      decision: decisions.some((d) => d.approved) ? 'approve' : 'reject',
+      lineItems: decisions,
+    },
+  })
+  invalidatePayments()
+  return hydrateClaim(claim)
+}
+
 /** See the note on `live/insurance.ts`'s `requestMoreInfo` — the same gap
  * applies here: no backend transition exists for it, so it resolves locally. */
 export async function requestMoreInfo(

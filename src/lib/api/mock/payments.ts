@@ -59,6 +59,47 @@ export async function createPayment(claimId: string): Promise<Payment> {
 }
 
 /**
+ * POST /api/payments — creates an additional payment against a claim that
+ * still has an outstanding balance. The mock fixtures model one payment per
+ * claim via `claim.paymentId`; this appends a genuinely separate row so a
+ * claim's payment history can show more than one, matching the live
+ * backend's behaviour, without disturbing that first linkage.
+ */
+export async function createAdditionalPayment(claimId: string, amount?: number): Promise<Payment> {
+  const claim = claimRef(claimId)
+  const outstanding = Math.max((claim.amountApproved ?? 0) - claim.amountPaid, 0)
+  if (outstanding <= 0) throw badRequest('This claim has no outstanding balance left to pay.')
+  const requested = amount ?? outstanding
+  if (requested > outstanding) {
+    throw badRequest(`The payment amount cannot exceed the outstanding balance of ${outstanding}.`)
+  }
+
+  const payment: Payment = {
+    id: `pay_${Date.now().toString(36)}`,
+    paymentReference: `PAY-${(payments.length + 41).toString().padStart(4, '0')}`,
+    claimId: claim.id,
+    claimNumber: claim.claimNumber,
+    payerId: claim.insurerId,
+    payerName: claim.insurerName,
+    payeeId: claim.hospitalId,
+    payeeName: claim.hospitalName,
+    patientName: claim.patientName,
+    amount: requested,
+    currency: 'MYR',
+    amountUsdc: Math.round((requested / MYR_PER_USDC) * 100) / 100,
+    status: 'pending',
+    method: 'Sui · USDC (sponsored)',
+    createdAt: now(),
+    initiatedAt: null,
+    settledAt: null,
+    failureReason: null,
+    transactionId: null,
+  }
+  payments.unshift(payment)
+  return respond(payment, 300, 550)
+}
+
+/**
  * POST /api/payments/:paymentId/initiate
  *
  * Slower than a data read on purpose: this is a chain round trip, and the UI

@@ -190,6 +190,23 @@ export interface ClaimDecision {
   approvedAmount?: number
 }
 
+/**
+ * One billed charge within a claim, assessed independently rather than as
+ * part of one all-or-nothing claim total. `approved`/`denied` are both null
+ * until a reviewer decides this specific item; an auto-approved claim never
+ * populates them (the auto-decide rule assesses the claim as a whole).
+ */
+export interface ClaimLineItem {
+  id: string
+  description: string
+  category: RecordCategory
+  amount: number
+  approved: boolean | null
+  denied: boolean | null
+  /** Why this item was approved/denied — set on denial. */
+  reason: string | null
+}
+
 export interface Claim {
   id: string
   claimNumber: string
@@ -211,6 +228,9 @@ export interface Claim {
   diagnosis: string
   amountRequested: number
   amountApproved: number | null
+  /** Sum of this claim's line items marked denied — null until a manual
+   * review with per-item decisions has run. */
+  amountDenied: number | null
   currency: 'MYR'
   status: ClaimStatus
   createdAt: string
@@ -222,6 +242,20 @@ export interface Claim {
   /** Human-readable explanation of the final decision — what happened, why
    * it was/wasn't covered, and how AI trust factored in (or didn't). */
   decisionExplanation: string | null
+  /** This claim's billed charges, each independently approved/denied. */
+  lineItems: ClaimLineItem[]
+  /** Sum of this claim's completed payments — money that has actually
+   * moved, as distinct from amountApproved (what was decided) or
+   * amountRequested (what was billed). */
+  amountPaid: number
+  /** `max(amountApproved - amountPaid, 0)` — what the insurer still owes.
+   * Reaching 0 is what closes the claim automatically. */
+  outstandingAmount: number
+  /** `amountRequested - (amountApproved ?? 0)` — the portion of the
+   * original bill insurance never took responsibility for (denied items,
+   * or a clause/limit adjustment). Never blocks the claim from closing —
+   * this is the patient's own balance, not the insurer's. */
+  patientResponsibility: number
 }
 
 /* ---------------------------------------- gonka verification (truth score) */

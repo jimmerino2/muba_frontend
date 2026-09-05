@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAction, useAsync } from '@/lib/useAsync'
@@ -16,6 +16,13 @@ const recordId = route.params.recordId as string
 
 const { data, loading, error, refresh } = useAsync(() =>
   hospitalsApi.getRecordById(auth.orgId!, recordId),
+)
+
+/** Loaded once the record itself is in, so the coverage/owed split can render alongside the bill. */
+const claimId = computed(() => data.value?.claimId ?? null)
+const { data: claim } = useAsync(
+  () => (claimId.value ? hospitalsApi.getClaimById(auth.orgId!, claimId.value) : Promise.resolve(null)),
+  { watch: [claimId] },
 )
 
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -91,7 +98,7 @@ async function onFiles(event: Event) {
 
       <p v-if="upload.error.value" class="mb-4 text-sm text-rose-300">{{ upload.error.value }}</p>
 
-      <RecordDetail :record="data" />
+      <RecordDetail :record="data" :claim="claim" />
     </template>
   </div>
 </template>

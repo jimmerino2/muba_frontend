@@ -287,6 +287,7 @@ export async function createClaimFromRecord(
     diagnosis: record.diagnosis,
     amountRequested: payload.amountRequested,
     amountApproved: null,
+    amountDenied: null,
     currency: 'MYR',
     status: 'created',
     createdAt: now(),
@@ -296,6 +297,21 @@ export async function createClaimFromRecord(
     paymentId: null,
     timeline: [],
     decisionExplanation: null,
+    // One claim line item per billed record line item, so approval/denial
+    // (and the resulting coverage/owed split) can be tracked per item rather
+    // than as one all-or-nothing total.
+    lineItems: record.lineItems.map((item) => ({
+      id: nextId('cli'),
+      description: item.description,
+      category: item.category,
+      amount: item.amount,
+      approved: null,
+      denied: null,
+      reason: null,
+    })),
+    amountPaid: 0,
+    outstandingAmount: 0,
+    patientResponsibility: 0,
   }
   claims.unshift(claim)
   record.claimId = claim.id

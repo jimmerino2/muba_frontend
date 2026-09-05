@@ -8,7 +8,7 @@ import * as mock from './mock/insurance'
  */
 const impl = API_MODE === 'mock' ? (mock as unknown as typeof live) : live
 
-export type { InsuranceClaimDetail, PolicyPayload } from './live/insurance'
+export type { InsuranceClaimDetail, LineItemDecision, PolicyPayload } from './live/insurance'
 
 export const {
   getDashboard,
@@ -17,6 +17,7 @@ export const {
   getClaimById,
   approveClaim,
   rejectClaim,
+  decideLineItems,
   requestMoreInfo,
   getMembers,
   getPolicies,

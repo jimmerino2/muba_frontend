@@ -20,7 +20,7 @@ const rows = computed(() => data.value?.data ?? [])
 const columns: Column<MedicalRecord>[] = [
   { key: 'visitDate', label: 'Visit', sortable: true, width: 'w-32' },
   { key: 'diagnosis', label: 'Diagnosis', sortable: true },
-  { key: 'hospitalName', label: 'Provider', sortable: true, hideOnMobile: true },
+  { key: 'hospitalName', label: 'Provider', sortable: true, width: 'w-40', hideOnMobile: true },
   { key: 'admissionType', label: 'Type', sortable: true, width: 'w-32', hideOnMobile: true },
   { key: 'totalCost', label: 'Billed', sortable: true, align: 'right', width: 'w-32' },
 ]
@@ -57,9 +57,9 @@ const columns: Column<MedicalRecord>[] = [
       </template>
 
       <template #cell-diagnosis="{ row }">
-        <div class="min-w-0">
-          <p class="truncate font-medium text-mist-100">{{ row.diagnosis }}</p>
-          <p class="truncate text-xs text-mist-500">
+        <div>
+          <p class="break-words font-medium text-mist-100">{{ row.diagnosis }}</p>
+          <p class="break-words text-xs text-mist-500">
             {{ row.department }} · {{ row.physician }}
           </p>
         </div>

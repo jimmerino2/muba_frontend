@@ -114,6 +114,23 @@ export async function createPayment(claimId: string): Promise<Payment> {
 }
 
 /**
+ * `POST /api/payments` — creates an additional payment against a claim that
+ * already has at least one payment but still carries an outstanding balance
+ * (a prior payment only partially covered the approved amount). `amount`
+ * defaults to the full outstanding balance when omitted. Distinct from
+ * `createPayment` above, which only ever resolves the one the backend
+ * already auto-created on approval and never makes a second one.
+ */
+export async function createAdditionalPayment(claimId: string, amount?: number): Promise<Payment> {
+  const payment = await http<WirePayment>('/api/payments', {
+    method: 'POST',
+    body: { claimId, ...(amount !== undefined ? { amount } : {}) },
+  })
+  invalidatePayments()
+  return hydrate(payment)
+}
+
+/**
  * `POST /api/payments/:id/initiate` — the real Sui transfer plus the mock bank
  * payout. The backend guards idempotency itself (a 409 on a payment that is not
  * PENDING), so calling this twice can never pay twice.

@@ -117,7 +117,7 @@ function open(row: T) {
 
     <!-- Table -->
     <div v-else class="overflow-x-auto">
-      <table class="w-full border-collapse text-left text-sm">
+      <table class="w-full table-fixed border-collapse text-left text-sm">
         <thead>
           <tr class="border-b border-ink-700/70">
             <th
@@ -173,6 +173,7 @@ function open(row: T) {
               :key="column.key"
               class="px-4 py-3 align-middle"
               :class="[
+                column.width,
                 column.align === 'right' ? 'text-right' : 'text-left',
                 column.hideOnMobile ? 'hidden sm:table-cell' : '',
               ]"

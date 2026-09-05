@@ -10,6 +10,7 @@ import * as paymentsApi from '@/lib/api/payments'
 import { claimStatusLabel, date, money } from '@/lib/format'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import ClaimStatusBadge from '@/components/ClaimStatusBadge.vue'
+import ClaimFinancialSummary from '@/components/ClaimFinancialSummary.vue'
 import TruthScorePanel from '@/components/TruthScorePanel.vue'
 import CoverageRemaining from '@/components/CoverageRemaining.vue'
 import ClaimLifecycleTimeline from '@/components/ClaimLifecycleTimeline.vue'
@@ -118,29 +119,13 @@ const nextStep = computed(() => {
         </div>
       </div>
 
-      <!-- What was claimed, and what's left on the policy — the two numbers a patient actually needs. -->
-      <section class="surface mb-5 p-5">
-        <div class="flex flex-wrap items-end gap-x-10 gap-y-5">
-          <div>
-            <p class="label">Amount claimed</p>
-            <p class="tnum mt-1 text-2xl font-semibold tracking-tight text-mist-100">
-              {{ money(data.claim.amountRequested) }}
-            </p>
-          </div>
-          <div>
-            <p class="label">Approved</p>
-            <p
-              class="tnum mt-1 text-2xl font-semibold tracking-tight"
-              :class="data.claim.amountApproved === null ? 'text-mist-500' : 'text-emerald-300'"
-            >
-              {{ data.claim.amountApproved === null ? 'Pending' : money(data.claim.amountApproved) }}
-            </p>
-          </div>
-        </div>
+      <!-- What was claimed, what's outstanding, and what's left on the policy
+           — the numbers a patient actually needs, always visible rather than
+           tucked behind "show full details" below. -->
+      <ClaimFinancialSummary :claim="data.claim" class="mb-5" />
 
-        <div v-if="data.policy" class="mt-5 border-t border-ink-700/70 pt-4">
-          <CoverageRemaining :used="data.usedOnPolicy" :limit="data.policy.coverageLimit" />
-        </div>
+      <section v-if="data.policy" class="surface mb-5 p-5">
+        <CoverageRemaining :used="data.usedOnPolicy" :limit="data.policy.coverageLimit" />
       </section>
 
       <!--
@@ -191,6 +176,8 @@ const nextStep = computed(() => {
           <h2 class="mb-3 text-sm font-semibold tracking-tight text-mist-100">Claim details</h2>
           <DetailList :items="facts" :columns="3" />
         </section>
+
+        <ClaimFinancialSummary v-if="data.claim.lineItems.length > 1" :claim="data.claim" show-line-items class="mb-5" />
 
         <section v-if="data.claim.decisionExplanation" class="surface mb-5 p-5">
           <h2 class="mb-3 text-sm font-semibold tracking-tight text-mist-100">Why this decision was made</h2>

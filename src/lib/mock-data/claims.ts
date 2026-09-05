@@ -42,7 +42,17 @@ const NO_TPA = { tpaId: null, tpaName: null }
  *   clm_011 — score 94 but RM46,800             → routed anyway, on amount alone
  * so the score is visibly an input to a decision, never the decision itself.
  */
-export const claims: Claim[] = [
+type LegacyClaimFixture = Omit<
+  Claim,
+  'amountDenied' | 'lineItems' | 'amountPaid' | 'outstandingAmount' | 'patientResponsibility'
+>
+
+/** Written before line-item-level approval existed — every fixture here
+ * predates ClaimLineItem, so each is given one synthetic line item
+ * (matching what claims-service.ts does for a claim with no medical
+ * record) and its derived payment figures computed the same way the real
+ * backend does, rather than being retyped one by one. */
+const legacyClaims: LegacyClaimFixture[] = [
   /* ------------------------------------------------ clm_001 — closed (paid out) */
   {
     id: 'clm_001',
@@ -518,6 +528,32 @@ export const claims: Claim[] = [
     decisionExplanation: null,
   },
 ]
+
+export const claims: Claim[] = legacyClaims.map((claim) => {
+  const patientResponsibility = Math.max(claim.amountRequested - (claim.amountApproved ?? 0), 0)
+  const amountPaid = claim.status === 'paid' || claim.status === 'closed' ? claim.amountApproved ?? 0 : 0
+  return {
+    ...claim,
+    amountDenied: claim.status === 'rejected' ? claim.amountRequested : null,
+    lineItems:
+      claim.amountApproved === null
+        ? [{ id: `${claim.id}_li1`, description: claim.treatmentDescription, category: 'Consultation', amount: claim.amountRequested, approved: null, denied: null, reason: null }]
+        : [
+            {
+              id: `${claim.id}_li1`,
+              description: claim.treatmentDescription,
+              category: 'Consultation',
+              amount: claim.amountRequested,
+              approved: claim.status !== 'rejected',
+              denied: claim.status === 'rejected',
+              reason: claim.status === 'rejected' ? (claim.decision?.reason ?? 'Not covered by policy') : null,
+            },
+          ],
+    amountPaid,
+    outstandingAmount: Math.max((claim.amountApproved ?? 0) - amountPaid, 0),
+    patientResponsibility,
+  }
+})
 
 /** Next sequence number for claims created during the session. */
 export function nextClaimSequence(): number {

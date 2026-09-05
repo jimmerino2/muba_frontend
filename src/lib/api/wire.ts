@@ -218,6 +218,19 @@ export interface WireClauseAssessment {
   contextForRouter: string
 }
 
+export interface WireClaimLineItem {
+  id: string
+  claimId: string
+  description: string
+  category: string
+  amount: number
+  approved: boolean | null
+  denied: boolean | null
+  reason: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export interface WireClaim {
   id: string
   claimNumber: string
@@ -234,6 +247,8 @@ export interface WireClaim {
   claimType: 'GL' | 'NON_GL'
   claimAmount: number
   approvedAmount: number | null
+  /** Sum of line items marked denied. Null until a manual review has run. */
+  deniedAmount: number | null
   /** true = auto-decided, false = a human reviewer approved it, null = not yet
    * approved. The status enum itself has a single APPROVED. */
   approvedAutomatically: boolean | null
@@ -251,6 +266,13 @@ export interface WireClaim {
   /** Human-readable explanation of the final decision, built once policy,
    * clauses and trust are all known. Null until verification has run. */
   decisionExplanation: string | null
+  lineItems: WireClaimLineItem[]
+  /** Sum of this claim's SETTLED payments. */
+  paidAmount: number
+  /** `max(approvedAmount - paidAmount, 0)`. */
+  outstandingAmount: number
+  /** `claimAmount - (approvedAmount ?? 0)`. */
+  patientResponsibility: number
   createdAt: string
   updatedAt: string
 }

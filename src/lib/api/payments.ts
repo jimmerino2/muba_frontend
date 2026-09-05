@@ -15,6 +15,7 @@ export const {
   getPayments,
   getPaymentById,
   createPayment,
+  createAdditionalPayment,
   initiatePayment,
   retryPayment,
   getPaymentStatus,

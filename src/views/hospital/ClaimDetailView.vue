@@ -12,6 +12,7 @@ import * as paymentsApi from '@/lib/api/payments'
 import { date, money } from '@/lib/format'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import ClaimStatusBadge from '@/components/ClaimStatusBadge.vue'
+import ClaimFinancialSummary from '@/components/ClaimFinancialSummary.vue'
 import TruthScorePanel from '@/components/TruthScorePanel.vue'
 import VerificationSteps from '@/components/VerificationSteps.vue'
 import ClaimLifecycleTimeline from '@/components/ClaimLifecycleTimeline.vue'
@@ -41,6 +42,7 @@ const policy = computed<Policy | null>(() => data.value?.policy ?? null)
 
 const facts = computed(() => {
   const claim = data.value?.claim
+  const p = data.value?.policy
   if (!claim) return []
   return [
     { label: 'Claim number', value: claim.claimNumber, mono: true },
@@ -49,6 +51,7 @@ const facts = computed(() => {
     { label: 'Policy', value: claim.policyNumber, mono: true },
     { label: 'Diagnosis', value: claim.diagnosis },
     { label: 'Submitted', value: date(claim.submittedAt) },
+    ...(p ? [{ label: 'Auto-approve limit', value: money(p.autoApproveLimit) }] : []),
   ]
 })
 
@@ -144,40 +147,10 @@ async function runVerification() {
 
       <p v-if="verify.error.value" class="mb-4 text-sm text-rose-300">{{ verify.error.value }}</p>
 
-      <section class="surface mb-5 p-5">
-        <div class="flex flex-wrap items-end gap-x-10 gap-y-5">
-          <div>
-            <p class="label">Amount claimed</p>
-            <p class="tnum mt-1 text-2xl font-semibold tracking-tight text-mist-100">
-              {{ money(data.claim.amountRequested) }}
-            </p>
-          </div>
-          <div>
-            <p class="label">Approved</p>
-            <p
-              class="tnum mt-1 text-2xl font-semibold tracking-tight"
-              :class="data.claim.amountApproved === null ? 'text-mist-500' : 'text-emerald-300'"
-            >
-              {{ data.claim.amountApproved === null ? 'Pending' : money(data.claim.amountApproved) }}
-            </p>
-          </div>
-          <div v-if="policy">
-            <p class="label">Auto-approve limit</p>
-            <p class="tnum mt-1 text-2xl font-semibold tracking-tight text-mist-400">
-              {{ money(policy.autoApproveLimit) }}
-            </p>
-          </div>
-          <div v-if="policy">
-            <p class="label">Score threshold</p>
-            <p class="tnum mt-1 text-2xl font-semibold tracking-tight text-gonka-400">
-              {{ policy.truthScoreThreshold }}
-            </p>
-          </div>
-        </div>
+      <ClaimFinancialSummary :claim="data.claim" show-line-items class="mb-5" />
 
-        <div class="mt-5 border-t border-ink-700/70 pt-4">
-          <DetailList :items="facts" :columns="3" />
-        </div>
+      <section class="surface mb-5 p-5">
+        <DetailList :items="facts" :columns="3" />
       </section>
 
       <div class="mb-5">

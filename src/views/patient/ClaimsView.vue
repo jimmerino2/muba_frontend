@@ -41,7 +41,7 @@ const rows = computed(() => {
 const columns: Column<Claim>[] = [
   { key: 'claimNumber', label: 'Claim', sortable: true, width: 'w-36' },
   { key: 'diagnosis', label: 'Diagnosis', sortable: true },
-  { key: 'hospitalName', label: 'Provider', sortable: true, hideOnMobile: true },
+  { key: 'hospitalName', label: 'Provider', sortable: true, width: 'w-40', hideOnMobile: true },
   {
     key: 'amountRequested',
     label: 'Claimed',
@@ -93,9 +93,9 @@ const columns: Column<Claim>[] = [
       </template>
 
       <template #cell-diagnosis="{ row }">
-        <div class="min-w-0">
-          <p class="truncate font-medium text-mist-100">{{ row.diagnosis }}</p>
-          <p class="truncate text-xs text-mist-500">{{ row.treatmentDescription }}</p>
+        <div>
+          <p class="break-words font-medium text-mist-100">{{ row.diagnosis }}</p>
+          <p class="break-words text-xs text-mist-500">{{ row.treatmentDescription }}</p>
         </div>
       </template>
 
