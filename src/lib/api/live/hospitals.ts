@@ -286,21 +286,21 @@ export async function updateRecord(
 }
 
 /**
- * Metadata-only, exactly as the backend stores it: no bytes leave the browser.
- * The UI is explicit that document upload is not real storage in this build.
+ * Uploads the real file — the backend stores it and, for a PDF, extracts its
+ * text so Gonka verification can read it as supporting evidence (see
+ * muba_backend records-service.ts uploadDocument).
  */
 export async function uploadDocument(
   recordId: string,
-  file: { name: string; size: number; type: string },
+  file: File,
   uploadedBy: string,
 ): Promise<DocumentRef> {
+  const form = new FormData()
+  form.append('file', file)
+
   const doc = await http<WireDocumentRef>(`/api/records/${recordId}/documents`, {
     method: 'POST',
-    body: {
-      name: file.name,
-      sizeBytes: file.size,
-      mimeType: file.type || 'application/octet-stream',
-    },
+    body: form,
   })
   return {
     id: doc.id,

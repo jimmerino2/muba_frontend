@@ -47,7 +47,7 @@ const lineItems = ref<RecordLineItem[]>([
   { description: '', category: 'Consultation', amount: 0 },
 ])
 
-/** Files are captured by name/size/type only — this build has no real storage. */
+/** The real files chosen for upload — sent as-is once the record is created. */
 const pendingFiles = ref<File[]>([])
 
 function addLineItem() {
@@ -90,11 +90,7 @@ const { pending, error, run } = useAction(async () => {
 
   // Uploads are a separate route in the real API, so they are separate calls here too.
   for (const file of pendingFiles.value) {
-    await hospitalsApi.uploadDocument(
-      record.id,
-      { name: file.name, size: file.size, type: file.type },
-      auth.user!.name,
-    )
+    await hospitalsApi.uploadDocument(record.id, file, auth.user!.name)
   }
   return record
 })
@@ -272,8 +268,9 @@ async function submit() {
       <section class="surface p-5">
         <h2 class="text-sm font-semibold tracking-tight text-mist-100">Supporting documents</h2>
         <p class="mt-1 text-xs leading-relaxed text-mist-500">
-          Discharge summaries, operative notes and imaging reports raise the Truth Score materially.
-          This prototype records the file name, size and type only — nothing is stored or uploaded.
+          Discharge summaries, operative notes and imaging reports raise the Truth Score
+          materially. A PDF's text is extracted and handed to Gonka as supporting evidence when
+          this claim is verified.
         </p>
 
         <label
@@ -281,7 +278,7 @@ async function submit() {
                  border border-dashed border-ink-600 px-4 py-7 text-center transition-colors hover:border-gonka-600/60 hover:bg-ink-850/60"
         >
           <span class="text-sm text-mist-300">Choose files to attach</span>
-          <span class="text-xs text-mist-500">PDF or image · demo capture only</span>
+          <span class="text-xs text-mist-500">PDF or image · up to 10MB each</span>
           <input type="file" multiple class="sr-only" @change="onFiles" />
         </label>
 

@@ -105,8 +105,14 @@ interface Envelope<T> {
 export async function http<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, query, auth = true, token, timeoutMs } = options
 
+  // A FormData body (a real file upload) must never be JSON.stringify'd or
+  // sent under Content-Type: application/json — fetch sets its own
+  // multipart boundary header when the body is a FormData instance, and
+  // setting Content-Type ourselves would strip that boundary.
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData
+
   const headers: Record<string, string> = {}
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  if (body !== undefined && !isFormData) headers['Content-Type'] = 'application/json'
 
   const bearer = token !== undefined ? token : auth ? getToken() : null
   if (bearer) headers.Authorization = `Bearer ${bearer}`
@@ -120,7 +126,7 @@ export async function http<T>(path: string, options: RequestOptions = {}): Promi
     response = await fetch(buildUrl(path, query), {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : isFormData ? (body as FormData) : JSON.stringify(body),
       signal: controller?.signal,
     })
   } catch (cause) {

@@ -22,11 +22,7 @@ const fileInput = ref<HTMLInputElement | null>(null)
 
 const upload = useAction(async (files: FileList) => {
   for (const file of Array.from(files)) {
-    await hospitalsApi.uploadDocument(
-      recordId,
-      { name: file.name, size: file.size, type: file.type },
-      auth.user!.name,
-    )
+    await hospitalsApi.uploadDocument(recordId, file, auth.user!.name)
   }
   await refresh()
 })
