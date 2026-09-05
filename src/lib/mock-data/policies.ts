@@ -31,6 +31,7 @@ export const policies: Policy[] = [
   {
     id: 'pol_001',
     name: 'EZ-Med Deductible — Gold',
+    productPlanId: 'plan-mock-gold',
     policyNumber: 'MN-INP-2024-88213',
     insurerId: 'org_manulife',
     insurerName: 'Manulife Insurance Berhad',
@@ -52,6 +53,7 @@ export const policies: Policy[] = [
   {
     id: 'pol_002',
     name: 'EZ-Med Deductible — Platinum',
+    productPlanId: 'plan-mock-platinum',
     policyNumber: 'MN-COM-2025-40917',
     insurerId: 'org_manulife',
     insurerName: 'Manulife Insurance Berhad',
@@ -73,6 +75,7 @@ export const policies: Policy[] = [
   {
     id: 'pol_003',
     name: 'EZ-Med Deductible — Gold',
+    productPlanId: 'plan-mock-gold',
     policyNumber: 'MN-OUT-2025-11204',
     insurerId: 'org_manulife',
     insurerName: 'Manulife Insurance Berhad',
@@ -94,6 +97,7 @@ export const policies: Policy[] = [
   {
     id: 'pol_004',
     name: 'EZ-Med Deductible — Platinum',
+    productPlanId: 'plan-mock-platinum',
     policyNumber: 'MN-CRI-2024-77530',
     insurerId: 'org_manulife',
     insurerName: 'Manulife Insurance Berhad',
@@ -115,6 +119,7 @@ export const policies: Policy[] = [
   {
     id: 'pol_005',
     name: 'EZ-Med Deductible — Gold',
+    productPlanId: 'plan-mock-gold',
     policyNumber: 'MN-INP-2025-33641',
     insurerId: 'org_manulife',
     insurerName: 'Manulife Insurance Berhad',

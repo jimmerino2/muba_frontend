@@ -185,13 +185,14 @@ export async function getPatientById(
       .map((c) => hydrateClaim(c, false)),
   )
 
-  // A hospital cannot browse an insurer's whole book of policies, but
-  // `GET /api/policies?patientId=` scopes to exactly this one patient — the
-  // policy an insurer has just set up for them shows up here immediately,
-  // not only once a claim has already referenced it.
-  const wirePolicies = await http<WirePolicy[]>(
-    `/api/policies?patientId=${encodeURIComponent(patientId)}`,
-  )
+  // A hospital cannot browse an insurer's whole book of policies, but it can
+  // ask for a *specific, already-known* patient's policies — the same
+  // canView() rule that already lets it fetch any one policy by id, applied
+  // in bulk (`GET /api/policies?patientRef=`). Deriving this list only from
+  // the patient's existing claims (the previous approach) meant a patient's
+  // very first claim could never be raised: no claim yet meant no way to
+  // discover their policy at all.
+  const wirePolicies = await http<WirePolicy[]>('/api/policies', { query: { patientRef: patientId } })
   const policies = await Promise.all(
     (wirePolicies ?? []).map(async (policy) => {
       cache.policies.put(policy.id, policy)
@@ -285,21 +286,21 @@ export async function updateRecord(
 }
 
 /**
- * Metadata-only, exactly as the backend stores it: no bytes leave the browser.
- * The UI is explicit that document upload is not real storage in this build.
+ * Uploads the real file — the backend stores it and, for a PDF, extracts its
+ * text so Gonka verification can read it as supporting evidence (see
+ * muba_backend records-service.ts uploadDocument).
  */
 export async function uploadDocument(
   recordId: string,
-  file: { name: string; size: number; type: string },
+  file: File,
   uploadedBy: string,
 ): Promise<DocumentRef> {
+  const form = new FormData()
+  form.append('file', file)
+
   const doc = await http<WireDocumentRef>(`/api/records/${recordId}/documents`, {
     method: 'POST',
-    body: {
-      name: file.name,
-      sizeBytes: file.size,
-      mimeType: file.type || 'application/octet-stream',
-    },
+    body: form,
   })
   return {
     id: doc.id,

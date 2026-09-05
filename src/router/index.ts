@@ -225,12 +225,6 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'Policy' },
       },
       {
-        path: 'policies/:policyId/edit',
-        name: 'insurance-policy-edit',
-        component: () => import('@/views/insurance/PolicyFormView.vue'),
-        meta: { title: 'Edit policy' },
-      },
-      {
         path: 'payments',
         name: 'insurance-payments',
         component: () => import('@/views/insurance/PaymentsView.vue'),

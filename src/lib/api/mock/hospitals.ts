@@ -218,9 +218,11 @@ export async function updateRecord(
  * No real storage in this build — the file's name, size and type are captured so
  * the UI can render an accurate attachment list.
  */
+/** Mock mode has no backend to extract PDF text against — metadata only,
+ * read straight off the real File object it's handed. */
 export async function uploadDocument(
   recordId: string,
-  file: { name: string; size: number; type: string },
+  file: File,
   uploadedBy: string,
 ): Promise<DocumentRef> {
   const record = recordRef(recordId)

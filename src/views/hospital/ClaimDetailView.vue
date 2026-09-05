@@ -4,6 +4,7 @@ import { RouterLink, useRoute } from 'vue-router'
 import type { Policy } from '@/lib/types'
 import { useAuthStore } from '@/stores/auth'
 import { useAction, useAsync } from '@/lib/useAsync'
+import { useVerificationRun } from '@/lib/useVerificationRun'
 import * as hospitalsApi from '@/lib/api/hospitals'
 import * as verificationApi from '@/lib/api/verification'
 import * as blockchainApi from '@/lib/api/blockchain'
@@ -12,6 +13,7 @@ import { date, money } from '@/lib/format'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import ClaimStatusBadge from '@/components/ClaimStatusBadge.vue'
 import TruthScorePanel from '@/components/TruthScorePanel.vue'
+import VerificationSteps from '@/components/VerificationSteps.vue'
 import ClaimLifecycleTimeline from '@/components/ClaimLifecycleTimeline.vue'
 import BlockchainRefLink from '@/components/BlockchainRefLink.vue'
 import DetailList from '@/components/ui/DetailList.vue'
@@ -62,6 +64,17 @@ const submitDraft = useAction(async () => {
     submitting.value = false
   }
 })
+
+/** A claim can land here already `submitted` but unverified — the original
+ * verification attempt (from ClaimCreateView, or a prior run of this same
+ * button) timed out, errored, or was never run because the claim was saved
+ * as a draft and submitted separately. Without this, that claim had no way
+ * to move forward from its own detail page at all. */
+const verify = useVerificationRun()
+async function runVerification() {
+  const outcome = await verify.run(claimId)
+  if (outcome) await refresh()
+}
 </script>
 
 <template>
@@ -108,6 +121,28 @@ const submitDraft = useAction(async () => {
       <p v-if="submitDraft.error.value" class="mb-4 text-sm text-rose-300">
         {{ submitDraft.error.value }}
       </p>
+
+      <!-- Submitted but not yet verified — a prior attempt may have timed out
+           or never run; this is always available, not a one-shot action. -->
+      <div
+        v-if="data.claim.status === 'submitted' && !verify.running.value"
+        class="surface mb-5 flex flex-wrap items-center justify-between gap-4 border-l-2 border-l-gonka-600 p-4"
+      >
+        <div>
+          <p class="text-sm font-medium text-mist-100">Awaiting verification</p>
+          <p class="mt-0.5 text-sm text-mist-500">
+            This claim has not been through the Gonka Router yet. Run it to get a Truth Score and
+            a routing decision.
+          </p>
+        </div>
+        <button type="button" class="btn-primary" @click="runVerification">
+          Run verification
+        </button>
+      </div>
+
+      <VerificationSteps v-if="verify.running.value" class="mb-5" :step-index="verify.stepIndex.value" />
+
+      <p v-if="verify.error.value" class="mb-4 text-sm text-rose-300">{{ verify.error.value }}</p>
 
       <section class="surface mb-5 p-5">
         <div class="flex flex-wrap items-end gap-x-10 gap-y-5">

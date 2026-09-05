@@ -346,6 +346,7 @@ export function toPolicy(
     id: policy.id,
     name: policy.name,
     policyNumber: policy.policyNumber,
+    productPlanId: policy.productPlanId,
     insurerId: policy.insuranceOrganizationId,
     insurerName: names.insurerName,
     holderPatientId: policy.patientRef,

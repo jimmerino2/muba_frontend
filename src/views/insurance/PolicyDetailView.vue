@@ -62,18 +62,12 @@ const utilisation = computed(() => {
         :title="data.policy.name"
         :subtitle="`${data.policy.policyNumber} · ${data.policy.holderName} · ${data.policy.coverageType}`"
         :back="{ to: '/insurance/policies', label: 'All policies' }"
-      >
-        <template #actions>
-          <RouterLink :to="`/insurance/policies/${policyId}/edit`" class="btn-primary">
-            Edit policy
-          </RouterLink>
-        </template>
-      </PageHeader>
+      />
 
-      <!-- The two numbers that drive routing get their own emphasis. -->
+      <!-- The numbers that drive routing get their own emphasis. -->
       <section class="surface mb-5 p-5">
         <h2 class="mb-4 text-sm font-semibold tracking-tight text-mist-100">Automation rules</h2>
-        <div class="grid gap-5 sm:grid-cols-2">
+        <div class="grid gap-5 sm:grid-cols-3">
           <div class="rounded-lg border border-ink-700 bg-ink-900/50 p-4">
             <p class="label">Auto-approval limit</p>
             <p class="tnum mt-1.5 text-2xl font-semibold tracking-tight text-mist-100">
@@ -92,10 +86,24 @@ const utilisation = computed(() => {
               Claims scoring below this reach an assessor, however small the amount.
             </p>
           </div>
+          <div class="rounded-lg border border-ink-700 bg-ink-900/50 p-4">
+            <p class="label">TPA approval limit</p>
+            <p class="tnum mt-1.5 text-2xl font-semibold tracking-tight text-mist-100">
+              {{ data.policy.tpaApprovalLimit !== null ? money(data.policy.tpaApprovalLimit) : 'No TPA delegation' }}
+            </p>
+            <p class="mt-2 text-xs leading-relaxed text-mist-500">
+              {{
+                data.policy.tpaApprovalLimit !== null
+                  ? 'The administering TPA may decide claims at or below this amount alone; above it, the claim escalates to your own review queue.'
+                  : 'This policy has no TPA delegated — every claim needing human review comes to your own queue directly.'
+              }}
+            </p>
+          </div>
         </div>
         <p class="mt-4 text-sm leading-relaxed text-mist-400">
           A claim clears without human review only when
-          <span class="text-mist-200">both</span> conditions are met.
+          <span class="text-mist-200">both</span> the auto-approval limit and the Truth Score
+          threshold are met.
         </p>
       </section>
 

@@ -73,8 +73,14 @@ export class ClaimRejectedBeforeVerification extends ApiError {
 }
 
 export async function verifyClaim(claimId: string): Promise<VerifyOutcome> {
+  // The Gonka call this triggers has no timeout of its own and is documented
+  // as sometimes running 60s+ — bound it client-side so a hung request
+  // surfaces a clear, retryable error instead of leaving the caller's UI
+  // waiting forever with no feedback (see useVerificationRun.ts and every
+  // view that renders VerificationSteps while this is in flight).
   const outcome = await http<WireVerifyOutcome>(`/api/verification/claims/${claimId}`, {
     method: 'POST',
+    timeoutMs: 90_000,
   })
 
   const claim = outcome?.claim
