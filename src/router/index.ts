@@ -81,7 +81,7 @@ const routes: RouteRecordRaw[] = [
     ],
   },
 
-  /* ------------------------------------------------------ hospital / TPA */
+  /* ------------------------------------------------------------ hospital */
   {
     path: '/hospital',
     component: () => import('@/views/hospital/HospitalLayout.vue'),
@@ -233,6 +233,58 @@ const routes: RouteRecordRaw[] = [
     ],
   },
 
+  /* ----------------------------------------------------------------- tpa */
+  {
+    path: '/tpa',
+    component: () => import('@/views/tpa/TpaLayout.vue'),
+    meta: { role: 'tpa' as Role },
+    children: [
+      { path: '', redirect: '/tpa/dashboard' },
+      {
+        path: 'dashboard',
+        name: 'tpa-dashboard',
+        component: () => import('@/views/tpa/DashboardView.vue'),
+        meta: { title: 'Dashboard' },
+      },
+      {
+        path: 'claims',
+        name: 'tpa-claims',
+        component: () => import('@/views/tpa/ClaimsView.vue'),
+        meta: { title: 'Claims' },
+      },
+      {
+        path: 'claims/:claimId',
+        name: 'tpa-claim-detail',
+        component: () => import('@/views/tpa/ClaimDetailView.vue'),
+        meta: { title: 'Claim' },
+      },
+      {
+        path: 'review',
+        name: 'tpa-review',
+        component: () => import('@/views/tpa/ReviewView.vue'),
+        meta: { title: 'Review queue' },
+      },
+      {
+        path: 'review/:claimId',
+        name: 'tpa-review-detail',
+        component: () => import('@/views/tpa/ReviewDetailView.vue'),
+        meta: { title: 'Review' },
+      },
+      {
+        path: 'payments',
+        name: 'tpa-payments',
+        component: () => import('@/views/tpa/PaymentsView.vue'),
+        meta: { title: 'Payments' },
+      },
+      {
+        path: 'payments/:paymentId',
+        name: 'tpa-payment-detail',
+        component: () => import('@/views/tpa/PaymentDetailView.vue'),
+        meta: { title: 'Payment' },
+      },
+    ],
+  },
+
   { path: '/:pathMatch(.*)*', redirect: '/login' },
 ]
 
@@ -240,6 +292,7 @@ export const HOME_FOR: Record<Role, string> = {
   patient: '/patient/dashboard',
   hospital: '/hospital/dashboard',
   insurance: '/insurance/dashboard',
+  tpa: '/tpa/dashboard',
 }
 
 export const router = createRouter({

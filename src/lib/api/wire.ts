@@ -13,7 +13,7 @@
 
 /* -------------------------------------------------------------- identity */
 
-export type WireActorType = 'USER' | 'INSURANCE' | 'HOSPITAL'
+export type WireActorType = 'USER' | 'INSURANCE' | 'HOSPITAL' | 'TPA'
 export type WireAuthRole =
   | 'USER'
   | 'INSURANCE_ADMIN'
@@ -53,7 +53,7 @@ export interface WireSession {
  * exposed to a hospital resolving its name. */
 export interface WireOrganization {
   id: string
-  type: 'INSURANCE' | 'HOSPITAL'
+  type: 'INSURANCE' | 'HOSPITAL' | 'TPA'
   name: string
   createdAt: string
 }
@@ -115,6 +115,9 @@ export interface WirePolicy {
     maximumCoverage: number
     deductible: number
     requiresReviewAbove: number | null
+    /** The insurer-set ceiling up to which the administering TPA may decide a
+     * claim alone; null when the policy has no TPA delegation. */
+    tpaApprovalLimit: number | null
   }
   createdAt: string
   updatedAt: string
@@ -217,6 +220,9 @@ export interface WireClaim {
   patientRef: string
   hospitalOrganizationId: string
   insuranceOrganizationId: string
+  /** The TPA administering this claim's validation and delegated approval.
+   * Null for a claim with no TPA on file. */
+  tpaOrganizationId: string | null
   policyId: string
   recordId: string | null
   treatmentDescription: string

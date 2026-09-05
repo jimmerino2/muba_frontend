@@ -35,6 +35,7 @@ const form = ref({
   status: 'active' as PolicyStatus,
   coverageLimit: 150_000,
   autoApproveLimit: 15_000,
+  tpaApprovalLimit: 10_000 as number | null,
   truthScoreThreshold: 85,
   deductible: 500,
   annualPremium: 2_940,
@@ -61,6 +62,7 @@ watch(existing, (policy) => {
     status: policy.status,
     coverageLimit: policy.coverageLimit,
     autoApproveLimit: policy.autoApproveLimit,
+    tpaApprovalLimit: policy.tpaApprovalLimit,
     truthScoreThreshold: policy.truthScoreThreshold,
     deductible: policy.deductible,
     annualPremium: policy.annualPremium,
@@ -75,12 +77,19 @@ const limitConflict = computed(
   () => Number(form.value.autoApproveLimit) > Number(form.value.coverageLimit),
 )
 
+const tpaLimitConflict = computed(
+  () =>
+    form.value.tpaApprovalLimit !== null &&
+    Number(form.value.tpaApprovalLimit) > Number(form.value.coverageLimit),
+)
+
 const canSubmit = computed(
   () =>
     form.value.name.trim() &&
     form.value.policyNumber.trim() &&
     form.value.holderPatientId &&
     !limitConflict.value &&
+    !tpaLimitConflict.value &&
     Number(form.value.truthScoreThreshold) >= 0 &&
     Number(form.value.truthScoreThreshold) <= 100,
 )
@@ -94,6 +103,8 @@ const save = useAction(async () => {
     status: form.value.status,
     coverageLimit: Number(form.value.coverageLimit),
     autoApproveLimit: Number(form.value.autoApproveLimit),
+    tpaApprovalLimit:
+      form.value.tpaApprovalLimit === null ? null : Number(form.value.tpaApprovalLimit),
     truthScoreThreshold: Number(form.value.truthScoreThreshold),
     deductible: Number(form.value.deductible),
     annualPremium: Number(form.value.annualPremium),
@@ -147,7 +158,7 @@ async function submit() {
               id="policy-number"
               v-model="form.policyNumber"
               class="field font-mono"
-              placeholder="GE-INP-2026-00001"
+              placeholder="MN-INP-2026-00001"
               required
             />
           </div>
@@ -259,6 +270,26 @@ async function submit() {
             </p>
             <p v-else class="mt-1.5 text-xs text-mist-500">
               Claims above {{ money(Number(form.autoApproveLimit)) }} always reach an assessor.
+            </p>
+          </div>
+
+          <div>
+            <label for="tpa-limit" class="label mb-1.5 block">TPA approval limit</label>
+            <input
+              id="tpa-limit"
+              v-model.number="form.tpaApprovalLimit"
+              type="number"
+              min="0"
+              step="100"
+              class="field tnum"
+              :class="tpaLimitConflict ? 'border-rose-500/60' : ''"
+            />
+            <p v-if="tpaLimitConflict" class="mt-1.5 text-xs text-rose-300">
+              Cannot exceed the annual coverage limit of {{ money(Number(form.coverageLimit)) }}.
+            </p>
+            <p v-else class="mt-1.5 text-xs text-mist-500">
+              The administering TPA may decide claims at or below this amount alone; above it, the
+              claim escalates to your own review queue.
             </p>
           </div>
 

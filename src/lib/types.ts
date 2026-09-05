@@ -4,8 +4,7 @@
  * the response bodies the real /backend will return.
  */
 
-export type Role = 'patient' | 'hospital' | 'insurance'
-export type OrgType = 'hospital' | 'tpa'
+export type Role = 'patient' | 'hospital' | 'insurance' | 'tpa'
 
 /* ------------------------------------------------------------------ users */
 
@@ -20,8 +19,6 @@ export interface User {
   /** Present for institutional roles */
   orgId?: string
   orgName?: string
-  /** Only meaningful for role === 'hospital'; drives "Hospital" vs "TPA" copy. */
-  orgType?: OrgType
   jobTitle?: string
 }
 
@@ -42,7 +39,7 @@ export interface Patient {
 export interface Organization {
   id: string
   name: string
-  type: OrgType | 'insurer'
+  type: 'hospital' | 'tpa' | 'insurer'
   registrationNo: string
   address: string
   contactEmail: string
@@ -73,6 +70,11 @@ export interface Policy {
   coverageLimit: number
   /** Claims at or below this amount may auto-approve when the Truth Score clears the threshold. */
   autoApproveLimit: number
+  /** The insurer-set ceiling up to which the administering TPA may decide a
+   * claim alone; above it (or when null — no TPA delegation) the insurer
+   * decides. Distinct from `autoApproveLimit`, which gates automated
+   * clearance rather than delegated human review. */
+  tpaApprovalLimit: number | null
   /** Truth Score (0-100) a claim must meet to skip human review. */
   truthScoreThreshold: number
   deductible: number
@@ -184,6 +186,11 @@ export interface Claim {
   hospitalName: string
   insurerId: string
   insurerName: string
+  /** The TPA administering this claim's validation and delegated approval.
+   * Null for a claim with no TPA on file (a policy with no delegation, or a
+   * NON_GL walk-in claim raised before one is assigned). */
+  tpaId: string | null
+  tpaName: string | null
   policyId: string
   policyNumber: string
   treatmentDescription: string

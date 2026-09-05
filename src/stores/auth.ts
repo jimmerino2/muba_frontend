@@ -48,9 +48,6 @@ export const useAuthStore = defineStore('auth', () => {
   const orgId = computed(() => session.value?.user.orgId ?? null)
   const patientId = computed(() => session.value?.user.patientId ?? null)
 
-  /** "Hospital" vs "TPA" copy, without forking the whole role. */
-  const orgLabel = computed(() => (session.value?.user.orgType === 'tpa' ? 'TPA' : 'Hospital'))
-
   /** Whether the zkLogin button can work at all — a missing Google client id is
    * a configuration gap worth naming, not a button that fails when pressed. */
   const zkLoginAvailable = computed(() => authApi.isZkLoginConfigured())
@@ -150,7 +147,6 @@ export const useAuthStore = defineStore('auth', () => {
     role,
     orgId,
     patientId,
-    orgLabel,
     suiAddress,
     isAuthenticated,
     signingIn,

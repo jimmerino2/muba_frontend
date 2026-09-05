@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAsync } from '@/lib/useAsync'
-import * as insuranceApi from '@/lib/api/insurance'
+import * as tpaApi from '@/lib/api/tpa'
 import * as verificationApi from '@/lib/api/verification'
 import { bandLabel, money, relative } from '@/lib/format'
 import PageHeader from '@/components/ui/PageHeader.vue'
@@ -15,14 +15,13 @@ import ErrorState from '@/components/ui/ErrorState.vue'
 const auth = useAuthStore()
 
 /**
- * The insurer's own queue — deliberately narrower than every `pending_review`
- * claim: only claims that have escalated past their TPA's delegated approval
- * limit land here. Each card carries the Truth Score and the reason the claim
- * was routed here — an assessor should never have to open a claim to find out
- * why it needs them.
+ * The delegated decision queue. Only claims within this TPA's insurer-set
+ * approval limit land here — anything above it sits in the insurer's own
+ * escalated queue instead. Each card carries the Truth Score and the reason
+ * the claim was routed to a human, exactly like the insurer's queue.
  */
 const { data, loading, error, refresh } = useAsync(async () => {
-  const queue = await insuranceApi.getReviewQueue(auth.orgId!)
+  const queue = await tpaApi.getReviewQueue(auth.orgId!)
   const verifications = await Promise.all(
     queue.data.map((claim) => verificationApi.getVerification(claim.id)),
   )
@@ -43,8 +42,8 @@ const BAND_STYLE = {
 <template>
   <div>
     <PageHeader
-      title="Escalated queue"
-      subtitle="Claims above your TPA's delegated approval limit. Each one shows what the Truth Score said and why a human is needed."
+      title="Review queue"
+      subtitle="Claims within your delegated approval limit. Each one shows what the Truth Score said and why a human is needed."
     />
 
     <ErrorState v-if="error" :message="error" class="mb-6" @retry="refresh" />
@@ -57,7 +56,7 @@ const BAND_STYLE = {
       v-else-if="!data?.length"
       class="surface"
       title="Queue is clear"
-      body="No claims are waiting on a human decision. Anything the engine could not clear will land here automatically."
+      body="No claims within your delegated limit are waiting on a decision."
       icon="✓"
     />
 
@@ -76,7 +75,7 @@ const BAND_STYLE = {
       <ul class="space-y-4">
         <li v-for="row in data" :key="row.claim.id">
           <RouterLink
-            :to="`/insurance/review/${row.claim.id}`"
+            :to="`/tpa/review/${row.claim.id}`"
             class="surface block p-5 transition-colors hover:border-ink-600 hover:bg-ink-850"
           >
             <div class="flex flex-wrap items-start justify-between gap-4">
@@ -93,7 +92,6 @@ const BAND_STYLE = {
               </div>
 
               <div class="flex shrink-0 items-center gap-6">
-                <!-- Score, always with its band label, never a bare number -->
                 <div v-if="row.verification" class="text-right">
                   <p class="label">Truth Score</p>
                   <p
@@ -123,7 +121,6 @@ const BAND_STYLE = {
               </div>
             </div>
 
-            <!-- Why it is here: pulled straight from the routing event on the timeline -->
             <p
               v-if="row.claim.timeline.some((e) => e.label === 'Routed to human review')"
               class="mt-4 border-t border-ink-700/70 pt-3 text-sm leading-relaxed text-mist-400"

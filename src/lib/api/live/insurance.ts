@@ -55,6 +55,18 @@ async function hydrateClaim(claim: WireClaim, withEvents = true): Promise<Claim>
   return toClaim(claim, names, events)
 }
 
+/**
+ * Whether a `REQUIRES_REVIEW` claim has escalated past its TPA's delegated
+ * limit and so belongs in the insurer's own queue rather than the TPA's.
+ * A claim with no TPA on file (no delegation exists) always escalates — there
+ * is no one else to decide it.
+ */
+async function isEscalatedToInsurer(claim: WireClaim): Promise<boolean> {
+  const policy = await cache.policies.get(claim.policyId)
+  const limit = policy?.coverageRules.tpaApprovalLimit
+  return limit === null || limit === undefined || claim.claimAmount > limit
+}
+
 /* ------------------------------------------------------------ dashboard */
 
 export async function getDashboard(insurerId: string): Promise<InsuranceDashboard> {
@@ -68,7 +80,15 @@ export async function getDashboard(insurerId: string): Promise<InsuranceDashboar
   // The review queue is the only place a timeline is needed on a list — the
   // queue shows *why* each claim was routed to a human, read off the routing
   // event. Everything else in this dashboard is counts, so events are skipped.
-  const queueSource = visible.filter((c) => c.status === 'REQUIRES_REVIEW' || c.status === 'SUBMITTED' || c.status === 'VERIFYING')
+  //
+  // A `REQUIRES_REVIEW` claim only belongs in the insurer's own queue once it
+  // has escalated past its TPA's delegated limit — anything still within that
+  // limit is the TPA's to decide, not shown here as actionable.
+  const notYetRouted = visible.filter((c) => c.status === 'SUBMITTED' || c.status === 'VERIFYING')
+  const requiresReview = visible.filter((c) => c.status === 'REQUIRES_REVIEW')
+  const escalated = await Promise.all(requiresReview.map(isEscalatedToInsurer))
+  const queueSource = [...notYetRouted, ...requiresReview.filter((_, i) => escalated[i])]
+
   const [claims, reviewQueue] = await Promise.all([
     Promise.all(visible.map((c) => hydrateClaim(c, false))),
     Promise.all(queueSource.map((c) => hydrateClaim(c, true))),
@@ -92,7 +112,9 @@ export async function getDashboard(insurerId: string): Promise<InsuranceDashboar
 
   return {
     pendingVerification: count('submitted'),
-    requiresReview: count('pending_review'),
+    // Only the escalated slice — the count matches what's actually actionable
+    // in this insurer's own review queue below.
+    requiresReview: queueSource.filter((c) => c.status === 'REQUIRES_REVIEW').length,
     approved: count('approved', 'auto_approved'),
     rejected: count('rejected'),
     paymentPending: paymentPending.length,
@@ -120,6 +142,31 @@ export async function getClaims(
   )
   const rows = claims
     .filter((c) => (query.status ? c.status === query.status : true))
+    .filter((c) => matches(query.q, c.claimNumber, c.patientName, c.hospitalName, c.diagnosis))
+    .sort(newestFirst((c) => c.updatedAt))
+  return paginate(rows, query)
+}
+
+/**
+ * The insurer's own review queue — deliberately narrower than
+ * `getClaims(insurerId, { status: 'pending_review' })`. A claim only reaches
+ * here once it has escalated past its administering TPA's delegated approval
+ * limit (or carries no TPA delegation at all); anything still within that
+ * limit sits in the TPA's own queue instead.
+ */
+export async function getReviewQueue(
+  insurerId: string,
+  query: ListQuery = {},
+): Promise<Paginated<Claim>> {
+  const wire = await http<WireClaim[]>('/api/claims')
+  const candidates = (wire ?? []).filter(
+    (c) => visibleToInsurer(c, insurerId) && c.status === 'REQUIRES_REVIEW',
+  )
+  const escalated = await Promise.all(candidates.map(isEscalatedToInsurer))
+  const claims = await Promise.all(
+    candidates.filter((_, i) => escalated[i]).map((c) => hydrateClaim(c)),
+  )
+  const rows = claims
     .filter((c) => matches(query.q, c.claimNumber, c.patientName, c.hospitalName, c.diagnosis))
     .sort(newestFirst((c) => c.updatedAt))
   return paginate(rows, query)
@@ -324,6 +371,9 @@ export async function createPolicy(
   if (payload.autoApproveLimit > payload.coverageLimit) {
     throw badRequest('The auto-approval limit cannot exceed the annual coverage limit.')
   }
+  if (payload.tpaApprovalLimit !== null && payload.tpaApprovalLimit > payload.coverageLimit) {
+    throw badRequest('The TPA approval limit cannot exceed the annual coverage limit.')
+  }
 
   const policy = await http<WirePolicy>('/api/policies', {
     method: 'POST',
@@ -338,6 +388,7 @@ export async function createPolicy(
       maximumCoverage: payload.coverageLimit,
       deductible: payload.deductible,
       requiresReviewAbove: payload.autoApproveLimit,
+      tpaApprovalLimit: payload.tpaApprovalLimit,
     },
   })
   return hydratePolicy(policy)

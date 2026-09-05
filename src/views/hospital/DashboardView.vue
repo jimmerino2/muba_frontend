@@ -21,7 +21,7 @@ const { data, loading, error, refresh } = useAsync(() =>
   <div>
     <PageHeader
       :title="auth.user?.orgName ?? 'Provider dashboard'"
-      :subtitle="`Claim and payment position for this ${auth.orgLabel.toLowerCase()}, across every insurer you bill.`"
+      subtitle="Claim and payment position for this hospital, across every insurer you bill."
     >
       <template #actions>
         <RouterLink to="/hospital/records/new" class="btn-primary">New medical record</RouterLink>

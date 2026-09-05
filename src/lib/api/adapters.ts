@@ -126,6 +126,10 @@ const EVENT_PRESENTATION: Record<
   CLAIM_POLICY_VERIFIED: { label: 'Policy verified', actor: 'WayFare policy engine', actorRole: 'system', status: 'submitted' },
   CLAIM_CLAUSES_ASSESSED: { label: 'Contract clauses assessed', actor: 'WayFare clause engine', actorRole: 'system', status: 'submitted', internal: true },
   CLAIM_VERIFIED: { label: 'Gonka verification complete', actor: 'Gonka Router', actorRole: 'gonka', status: 'verified' },
+  // Decision default: the insurer, until the event's own metadata says a TPA
+  // decided instead — see `decidingActor` below. Kept as the fallback rather
+  // than a claim-type guess, since an older event (seeded before TPA existed)
+  // carries no such hint at all.
   CLAIM_APPROVED: { label: 'Claim approved', actor: 'Insurer', actorRole: 'insurance', status: 'approved' },
   CLAIM_REJECTED: { label: 'Claim rejected', actor: 'Insurer', actorRole: 'insurance', status: 'rejected' },
   CLAIM_REVIEW_REQUESTED: { label: 'Routed to human review', actor: 'WayFare policy engine', actorRole: 'system', status: 'pending_review', internal: true },
@@ -134,6 +138,32 @@ const EVENT_PRESENTATION: Record<
   PAYMENT_FAILED: { label: 'Settlement failed', actor: 'Sui testnet', actorRole: 'sui', status: 'approved' },
   PAYMENT_RECEIVED: { label: 'Payment received', actor: 'Hospital', actorRole: 'hospital', status: 'paid' },
   CLAIM_CLOSED: { label: 'Claim closed', actor: 'Hospital', actorRole: 'hospital', status: 'closed' },
+}
+
+/** Event types whose actor genuinely depends on who acted — a claim decision
+ * or a settlement can now be made by either the TPA (within its delegated
+ * limit) or the insurer, so these cannot be a single static label. */
+const ACTOR_VARIES_BY_DECIDER = new Set(['CLAIM_APPROVED', 'CLAIM_REJECTED', 'PAYMENT_INITIATED'])
+
+/**
+ * Reads which org type actually decided off the event's own metadata, when the
+ * backend recorded one. The exact key the backend uses for this is not yet
+ * settled (this module was written in parallel with the backend change that
+ * adds TPA decisions), so a small set of plausible keys is tried; an event
+ * with none of them — including every event written before TPA existed —
+ * falls back to `presentation`'s static actor, which is what already rendered
+ * before this change.
+ */
+function decidingActor(
+  metadata: Record<string, unknown>,
+  presentation: { actor: string; actorRole: ActorRole },
+): { actor: string; actorRole: ActorRole } {
+  const hint =
+    metadata.decidingOrgType ?? metadata.reviewerOrgType ?? metadata.actorOrgType ?? metadata.orgType
+  if (hint === 'TPA') return { actor: 'TPA', actorRole: 'tpa' }
+  if (hint === 'INSURANCE') return { actor: 'Insurer', actorRole: 'insurance' }
+  if (hint === 'SYSTEM') return { actor: 'WayFare policy engine', actorRole: 'system' }
+  return presentation
 }
 
 /** Renders an event's metadata into the one-line detail the timeline shows.
@@ -197,13 +227,17 @@ export function toClaimEvent(event: WireClaimEvent): ClaimEvent {
     /* A metadata blob we cannot parse still yields a usable timeline row. */
   }
 
+  const { actor, actorRole } = ACTOR_VARIES_BY_DECIDER.has(event.eventType)
+    ? decidingActor(metadata, presentation)
+    : presentation
+
   return {
     id: event.id,
     status: presentation.status,
     label: presentation.label,
     detail: eventDetail(event.eventType, metadata),
-    actor: presentation.actor,
-    actorRole: presentation.actorRole,
+    actor,
+    actorRole,
     timestamp: event.createdAt,
     internal: presentation.internal ?? false,
   }
@@ -217,6 +251,8 @@ export interface ClaimNames {
   patientName: string
   hospitalName: string
   insurerName: string
+  /** Null when the claim carries no `tpaOrganizationId`. */
+  tpaName: string | null
   policyNumber: string
   /** From the linked medical record, when there is one. */
   diagnosis: string
@@ -272,6 +308,8 @@ export function toClaim(claim: WireClaim, names: ClaimNames, events: ClaimEvent[
     hospitalName: names.hospitalName,
     insurerId: claim.insuranceOrganizationId,
     insurerName: names.insurerName,
+    tpaId: claim.tpaOrganizationId,
+    tpaName: claim.tpaOrganizationId ? names.tpaName : null,
     policyId: claim.policyId,
     policyNumber: names.policyNumber,
     treatmentDescription: claim.treatmentDescription,
@@ -317,6 +355,7 @@ export function toPolicy(
       policy.status === 'ACTIVE' ? 'active' : policy.status === 'SUSPENDED' ? 'pending' : 'lapsed',
     coverageLimit: policy.coverageRules.maximumCoverage,
     autoApproveLimit: policy.coverageRules.requiresReviewAbove ?? policy.coverageRules.maximumCoverage,
+    tpaApprovalLimit: policy.coverageRules.tpaApprovalLimit,
     truthScoreThreshold,
     deductible: policy.coverageRules.deductible,
     annualPremium: policy.annualPremium,
@@ -353,7 +392,7 @@ export function toOrganization(org: WireOrganization): Organization {
   return {
     id: org.id,
     name: org.name,
-    type: org.type === 'INSURANCE' ? 'insurer' : 'hospital',
+    type: org.type === 'INSURANCE' ? 'insurer' : org.type === 'TPA' ? 'tpa' : 'hospital',
     // The backend's Organization deliberately carries none of these — they are
     // not needed for any decision, and inventing them would put fictional
     // registration numbers in front of a user.

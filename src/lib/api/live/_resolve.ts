@@ -174,10 +174,11 @@ export async function claimEvents(claimId: string): Promise<ClaimEvent[]> {
  * requests rather than four per claim.
  */
 export async function claimNames(claim: WireClaim): Promise<ClaimNames> {
-  const [patient, hospital, insurer, policy, record, paymentId] = await Promise.all([
+  const [patient, hospital, insurer, tpa, policy, record, paymentId] = await Promise.all([
     patientName(claim.patientRef),
     organizationName(claim.hospitalOrganizationId),
     organizationName(claim.insuranceOrganizationId),
+    claim.tpaOrganizationId ? organizationName(claim.tpaOrganizationId) : Promise.resolve(null),
     policyNumber(claim.policyId),
     claim.recordId ? records.get(claim.recordId) : Promise.resolve(null),
     paymentIdForClaim(claim.id),
@@ -187,6 +188,7 @@ export async function claimNames(claim: WireClaim): Promise<ClaimNames> {
     patientName: patient,
     hospitalName: hospital,
     insurerName: insurer,
+    tpaName: tpa,
     policyNumber: policy,
     diagnosis: record?.diagnosis ?? '',
     paymentId,

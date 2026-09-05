@@ -40,6 +40,7 @@ const terminated = computed(() => props.currentStatus === 'rejected')
 const ACTOR_STYLE: Record<ClaimEvent['actorRole'], { dot: string; chip: string; name: string }> = {
   hospital: { dot: 'bg-sky-400', chip: 'text-sky-300', name: 'Provider' },
   insurance: { dot: 'bg-amber-400', chip: 'text-amber-300', name: 'Insurer' },
+  tpa: { dot: 'bg-fuchsia-400', chip: 'text-fuchsia-300', name: 'TPA' },
   patient: { dot: 'bg-mist-300', chip: 'text-mist-300', name: 'Patient' },
   gonka: { dot: 'bg-gonka-500', chip: 'text-gonka-400', name: 'Gonka' },
   sui: { dot: 'bg-sui-500', chip: 'text-sui-400', name: 'Sui' },

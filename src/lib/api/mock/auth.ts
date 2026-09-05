@@ -32,6 +32,7 @@ const ADDRESSES: Record<Role, string> = {
   patient: '0x7a2f9c81b04e6d35a19f80c2e4b7d6a538f1029c4e8b7a06d3f95c1e284b7d60',
   hospital: '0xb14e83c9d720a6f5183e94c02d7b6a41f508c39e2b71d06a4f83c5e9107b2d84',
   insurance: '0x3f81b6d2c47e905a1b8d3f602c9e47a5b1d08f36c2a94e7b0d5f81a3c6e29b04',
+  tpa: '0xd905f2ec96c1a7803d8e6e5f42a37b0c9d4e5f01a2b3c4d5e6f708192a3b4c50',
 }
 
 function mintSession(role: Role): Session {

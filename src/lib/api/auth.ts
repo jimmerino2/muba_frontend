@@ -54,7 +54,9 @@ export const signInAsDemoAccount: typeof live.signInAsDemoAccount =
           ? 'hospital'
           : email.includes('insurance')
             ? 'insurance'
-            : 'patient'
+            : email.includes('tpa')
+              ? 'tpa'
+              : 'patient'
         return mock.login(role) as unknown as live.Session
       }
     : live.signInAsDemoAccount

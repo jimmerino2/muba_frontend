@@ -13,6 +13,7 @@ export type { InsuranceClaimDetail, PolicyPayload } from './live/insurance'
 export const {
   getDashboard,
   getClaims,
+  getReviewQueue,
   getClaimById,
   approveClaim,
   rejectClaim,

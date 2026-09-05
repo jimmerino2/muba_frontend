@@ -111,9 +111,9 @@ export const blockchainRefs: BlockchainRef[] = [
   ref({ id: 'bc_011', kind: 'claim_attestation', claimId: 'clm_012', paymentId: null, daysAgo: 8, gasFeeSui: 0.00193, events: attest('CLM-2026-0088', 95, 'gonka-req-d740e6b8') }),
   ref({ id: 'bc_014', kind: 'claim_attestation', claimId: 'clm_013', paymentId: null, daysAgo: 12, gasFeeSui: 0.00205, events: attest('CLM-2026-0082', 74, 'gonka-req-a619b2f5') }),
 
-  ref({ id: 'bc_003', kind: 'settlement', claimId: 'clm_001', paymentId: 'pay_001', daysAgo: 45, gasFeeSui: 0.00341, events: settle('CLM-2026-0041', 11_900, 2_494.76, 'Gleneagles Kuala Lumpur') }),
-  ref({ id: 'bc_012', kind: 'settlement', claimId: 'clm_008', paymentId: 'pay_004', daysAgo: 58, gasFeeSui: 0.00358, events: settle('CLM-2026-0029', 25_500, 5_345.91, 'Gleneagles Kuala Lumpur') }),
-  ref({ id: 'bc_013', kind: 'settlement', claimId: 'clm_009', paymentId: 'pay_005', daysAgo: 85, gasFeeSui: 0.00329, events: settle('CLM-2026-0012', 4_500, 943.4, 'MediAssist TPA Sdn Bhd') }),
+  ref({ id: 'bc_003', kind: 'settlement', claimId: 'clm_001', paymentId: 'pay_001', daysAgo: 45, gasFeeSui: 0.00341, events: settle('CLM-2026-0041', 11_900, 2_494.76, 'Gleneagles Kuala Lumpur — Manulife Panel Provider') }),
+  ref({ id: 'bc_012', kind: 'settlement', claimId: 'clm_008', paymentId: 'pay_004', daysAgo: 58, gasFeeSui: 0.00358, events: settle('CLM-2026-0029', 27_000, 5_660.38, 'Gleneagles Kuala Lumpur — Manulife Panel Provider') }),
+  ref({ id: 'bc_013', kind: 'settlement', claimId: 'clm_009', paymentId: 'pay_005', daysAgo: 85, gasFeeSui: 0.00329, events: settle('CLM-2026-0012', 4_250, 890.99, 'MediAssist Medical Centre — Manulife Panel Provider') }),
 ]
 
 /** Creates a new on-chain reference for an action taken during the session. */

@@ -276,6 +276,9 @@ export async function createClaimFromRecord(
     hospitalName: record.hospitalName,
     insurerId: policy.insurerId,
     insurerName: policy.insurerName,
+    // This demo world has exactly one TPA administering every policy.
+    tpaId: 'org_carecall_tpa',
+    tpaName: 'CareCall TPA Services — Appointed by Manulife',
     policyId: policy.id,
     policyNumber: policy.policyNumber,
     treatmentDescription: payload.treatmentDescription,

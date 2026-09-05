@@ -2,14 +2,22 @@ import type { Organization, Patient, User } from '@/lib/types'
 import { ago } from './_time'
 
 /**
- * Organizations — two care providers (one hospital, one TPA) and two insurers.
- * The TPA shares the `hospital` role experience; only `type` differs, which is
- * what drives "Hospital" vs "TPA" copy in the shell.
+ * Organizations — two hospitals (both on Manulife's provider panel), one TPA
+ * (appointed by Manulife as the delegated claims administrator), and one
+ * insurer. TPA is a genuine organisation type and role now, not a cosmetic
+ * label on a hospital account.
+ *
+ * A single insurer — Manulife Insurance Berhad — underwrites every seeded
+ * policy, written against the transcribed Manulife EZ-Med Deductible contract
+ * (`muba_backend/app/features/clauses/clauses-manulife-ezmed.ts`). All five
+ * seeded patients are Manulife policyholders, so cross-insurer scoping is no
+ * longer part of this demo's story — the interesting contrast is tier
+ * (PLATINUM vs GOLD) and TPA-delegated-limit vs insurer-escalated review.
  */
 export const organizations: Organization[] = [
   {
     id: 'org_gleneagles',
-    name: 'Gleneagles Kuala Lumpur',
+    name: 'Gleneagles Kuala Lumpur — Manulife Panel Provider',
     type: 'hospital',
     registrationNo: 'HOSP-WP-199401-KL',
     address: '286 Jalan Ampang, 50450 Kuala Lumpur',
@@ -17,27 +25,27 @@ export const organizations: Organization[] = [
   },
   {
     id: 'org_mediassist',
-    name: 'MediAssist TPA Sdn Bhd',
-    type: 'tpa',
-    registrationNo: 'TPA-SGR-201108-PJ',
+    name: 'MediAssist Medical Centre — Manulife Panel Provider',
+    type: 'hospital',
+    registrationNo: 'HOSP-SGR-201108-PJ',
     address: 'Level 12, Menara Prisma, 46050 Petaling Jaya',
-    contactEmail: 'ops@mediassist-tpa.example',
+    contactEmail: 'ops@mediassist-medical.example',
   },
   {
-    id: 'org_greateastern',
-    name: 'Great Eastern Takaful',
-    type: 'insurer',
-    registrationNo: 'INS-WP-196512-GE',
-    address: 'Menara Great Eastern, 50450 Kuala Lumpur',
-    contactEmail: 'health.claims@greateastern.example',
+    id: 'org_carecall_tpa',
+    name: 'CareCall TPA Services — Appointed by Manulife',
+    type: 'tpa',
+    registrationNo: 'TPA-WP-201509-CC',
+    address: 'Level 8, Menara IGB, 59200 Kuala Lumpur',
+    contactEmail: 'ops@carecall-tpa.example',
   },
   {
-    id: 'org_etiqa',
-    name: 'Etiqa Insurance Berhad',
+    id: 'org_manulife',
+    name: 'Manulife Insurance Berhad',
     type: 'insurer',
-    registrationNo: 'INS-WP-197304-ET',
-    address: 'Dataran Maybank, 59000 Kuala Lumpur',
-    contactEmail: 'medical@etiqa.example',
+    registrationNo: 'INS-WP-197008-MN',
+    address: 'Menara Manulife, 50450 Kuala Lumpur',
+    contactEmail: 'health.claims@manulife.example',
   },
 ]
 
@@ -129,19 +137,28 @@ export const users: User[] = [
     role: 'hospital',
     avatarInitials: 'FI',
     orgId: 'org_gleneagles',
-    orgName: 'Gleneagles Kuala Lumpur',
-    orgType: 'hospital',
+    orgName: 'Gleneagles Kuala Lumpur — Manulife Panel Provider',
     jobTitle: 'Claims & Billing Lead',
   },
   {
     id: 'usr_insurance',
     name: 'Adrian Yeoh',
-    email: 'a.yeoh@greateastern.example',
+    email: 'a.yeoh@manulife.example',
     role: 'insurance',
     avatarInitials: 'AY',
-    orgId: 'org_greateastern',
-    orgName: 'Great Eastern Takaful',
+    orgId: 'org_manulife',
+    orgName: 'Manulife Insurance Berhad',
     jobTitle: 'Senior Claims Assessor',
+  },
+  {
+    id: 'usr_tpa',
+    name: 'Michelle Wong',
+    email: 'm.wong@carecall-tpa.example',
+    role: 'tpa',
+    avatarInitials: 'MW',
+    orgId: 'org_carecall_tpa',
+    orgName: 'CareCall TPA Services — Appointed by Manulife',
+    jobTitle: 'Claims Administrator',
   },
 ]
 

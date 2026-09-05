@@ -37,9 +37,23 @@ import { appendEvent, claimRef, ensurePayment, nextId } from './_store'
 const visibleToInsurer = (claim: Claim, insurerId: string) =>
   claim.insurerId === insurerId && claim.status !== 'created'
 
+/**
+ * Whether a `pending_review` claim has escalated past its TPA's delegated
+ * limit and so belongs in the insurer's own queue. A claim with no TPA on
+ * file always escalates — there is no one else to decide it.
+ */
+function isEscalatedToInsurer(claim: Claim): boolean {
+  const policy = policies.find((p) => p.id === claim.policyId)
+  const limit = policy?.tpaApprovalLimit
+  return limit == null || claim.amountRequested > limit
+}
+
 /** GET /api/insurance/dashboard */
 export async function getDashboard(insurerId: string): Promise<InsuranceDashboard> {
   const mine = claims.filter((c) => visibleToInsurer(c, insurerId))
+  const escalatedQueue = mine.filter(
+    (c) => c.status === 'submitted' || (c.status === 'pending_review' && isEscalatedToInsurer(c)),
+  )
   const count = (...statuses: Claim['status'][]) =>
     mine.filter((c) => statuses.includes(c.status)).length
 
@@ -57,7 +71,8 @@ export async function getDashboard(insurerId: string): Promise<InsuranceDashboar
 
   return respond({
     pendingVerification: count('submitted'),
-    requiresReview: count('pending_review'),
+    // Only the escalated slice — matches what's actually actionable below.
+    requiresReview: escalatedQueue.filter((c) => c.status === 'pending_review').length,
     approved: count('approved', 'auto_approved'),
     rejected: count('rejected'),
     paymentPending: paymentPending.length,
@@ -71,9 +86,7 @@ export async function getDashboard(insurerId: string): Promise<InsuranceDashboar
     autoApprovalRate: decided.length
       ? Math.round((autoDecided.length / decided.length) * 100)
       : 0,
-    reviewQueue: mine
-      .filter((c) => c.status === 'pending_review' || c.status === 'submitted')
-      .sort(byNewest((c) => c.updatedAt)),
+    reviewQueue: [...escalatedQueue].sort(byNewest((c) => c.updatedAt)),
   })
 }
 
@@ -88,6 +101,23 @@ export async function getClaims(
     .filter((c) =>
       matchesQuery(query.q, c.claimNumber, c.patientName, c.hospitalName, c.diagnosis),
     )
+    .sort(byNewest((c) => c.updatedAt))
+  return respondList(rows, query)
+}
+
+/**
+ * The insurer's own review queue — narrower than `getClaims(insurerId, {
+ * status: 'pending_review' })`. Only claims that have escalated past their
+ * TPA's delegated limit (or carry no TPA delegation) show up here.
+ */
+export async function getReviewQueue(
+  insurerId: string,
+  query: ListQuery = {},
+): Promise<Paginated<Claim>> {
+  const rows = claims
+    .filter((c) => visibleToInsurer(c, insurerId) && c.status === 'pending_review')
+    .filter(isEscalatedToInsurer)
+    .filter((c) => matchesQuery(query.q, c.claimNumber, c.patientName, c.hospitalName, c.diagnosis))
     .sort(byNewest((c) => c.updatedAt))
   return respondList(rows, query)
 }
@@ -278,6 +308,9 @@ export async function createPolicy(
   }
   if (payload.autoApproveLimit > payload.coverageLimit) {
     throw badRequest('The auto-approval limit cannot exceed the annual coverage limit.')
+  }
+  if (payload.tpaApprovalLimit !== null && payload.tpaApprovalLimit > payload.coverageLimit) {
+    throw badRequest('The TPA approval limit cannot exceed the annual coverage limit.')
   }
 
   const policy: Policy = {

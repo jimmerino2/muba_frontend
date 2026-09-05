@@ -28,7 +28,7 @@ const columns: Column<Patient>[] = [
   <div>
     <PageHeader
       title="Patients"
-      :subtitle="`Patients with at least one medical record filed at this ${auth.orgLabel.toLowerCase()}.`"
+      subtitle="Patients with at least one medical record filed at this hospital."
     />
 
     <ErrorState v-if="error" :message="error" class="mb-6" @retry="refresh" />

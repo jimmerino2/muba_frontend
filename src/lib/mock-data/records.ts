@@ -32,8 +32,8 @@ const li = (
   amount: number,
 ): RecordLineItem => ({ description, category, amount })
 
-const GLEN = { hospitalId: 'org_gleneagles', hospitalName: 'Gleneagles Kuala Lumpur' }
-const TPA = { hospitalId: 'org_mediassist', hospitalName: 'MediAssist TPA Sdn Bhd' }
+const GLEN = { hospitalId: 'org_gleneagles', hospitalName: 'Gleneagles Kuala Lumpur — Manulife Panel Provider' }
+const MEDIASSIST = { hospitalId: 'org_mediassist', hospitalName: 'MediAssist Medical Centre — Manulife Panel Provider' }
 
 export const medicalRecords: MedicalRecord[] = [
   seal({
@@ -105,7 +105,7 @@ export const medicalRecords: MedicalRecord[] = [
     recordNumber: 'MR-2026-1085',
     patientId: 'pat_003',
     patientName: 'Rajesh Kumar a/l Subramaniam',
-    ...TPA,
+    ...MEDIASSIST,
     visitDate: ago(7),
     admissionType: 'day-surgery',
     department: 'Gastroenterology',
@@ -221,7 +221,7 @@ export const medicalRecords: MedicalRecord[] = [
     recordNumber: 'MR-2026-1052',
     patientId: 'pat_002',
     patientName: 'Tan Wei Ming',
-    ...TPA,
+    ...MEDIASSIST,
     visitDate: ago(34),
     admissionType: 'day-surgery',
     department: 'ENT',
@@ -280,7 +280,7 @@ export const medicalRecords: MedicalRecord[] = [
     recordNumber: 'MR-2026-0998',
     patientId: 'pat_003',
     patientName: 'Rajesh Kumar a/l Subramaniam',
-    ...TPA,
+    ...MEDIASSIST,
     visitDate: ago(88),
     admissionType: 'day-surgery',
     department: 'Ophthalmology',

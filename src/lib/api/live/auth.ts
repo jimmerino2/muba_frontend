@@ -77,6 +77,8 @@ export function roleFor(actorType: WireSession['identity']['actorType']): Role {
       return 'hospital'
     case 'INSURANCE':
       return 'insurance'
+    case 'TPA':
+      return 'tpa'
   }
 }
 
@@ -124,10 +126,6 @@ async function toSession(wire: WireSession): Promise<Session> {
       ? {
           orgId: wire.identity.organizationId,
           orgName: orgName ?? 'Your organisation',
-          // The backend models one HOSPITAL org type; the UI's 'tpa' variant
-          // only changes copy, and nothing in the API distinguishes them, so
-          // every hospital org reads as 'hospital' rather than guessing.
-          ...(role === 'hospital' ? ({ orgType: 'hospital' } as const) : {}),
           jobTitle: wire.identity.employeeRole === 'ADMIN' ? 'Administrator' : 'Officer',
         }
       : {}),

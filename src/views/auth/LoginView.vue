@@ -32,7 +32,7 @@ const showDemoAccounts = ref(false)
  * six near-identical seeded accounts. Admin accounts are preferred: they can
  * exercise everything an employee can, plus the org-management screens. */
 const demoByRole = computed(() => {
-  const order: Role[] = ['patient', 'hospital', 'insurance']
+  const order: Role[] = ['patient', 'hospital', 'insurance', 'tpa']
   return order
     .map((role) => {
       const forRole = auth.demoAccounts.filter((a) => a.role === role)
@@ -47,12 +47,16 @@ const ROLE_BLURBS: Record<Role, { label: string; blurb: string }> = {
     blurb: 'See your cover, your records, and exactly why each claim was decided the way it was.',
   },
   hospital: {
-    label: 'Hospital / TPA',
+    label: 'Hospital',
     blurb: 'Author records, raise claims against them, and watch verification resolve live.',
   },
   insurance: {
     label: 'Insurer',
-    blurb: 'Work the review queue with the Truth Score and its reasoning in front of you.',
+    blurb: 'Work the escalated queue — claims above the TPA’s delegated approval limit.',
+  },
+  tpa: {
+    label: 'TPA',
+    blurb: 'Validate claims on the insurer’s behalf and decide the ones within your delegated limit.',
   },
 }
 
