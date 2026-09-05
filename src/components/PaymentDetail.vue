@@ -7,20 +7,42 @@ import PaymentStatusBadge from '@/components/PaymentStatusBadge.vue'
 import BlockchainRefLink from '@/components/BlockchainRefLink.vue'
 import DetailList from '@/components/ui/DetailList.vue'
 
-/** The payment body, shared by all three roles; each supplies its own actions. */
-const props = defineProps<{ payment: Payment; transaction: BlockchainRef | null }>()
+/**
+ * The payment body, shared by all three roles; each supplies its own actions.
+ *
+ * `variant: 'receipt'` is for the patient: a payment is between the insurer
+ * and the hospital, so the patient sees that it happened and what it was for
+ * — not who paid whom or by what method, which is the two organizations'
+ * internal settlement detail.
+ */
+const props = withDefaults(
+  defineProps<{ payment: Payment; transaction: BlockchainRef | null; variant?: 'full' | 'receipt' }>(),
+  { variant: 'full' },
+)
 
-const facts = computed(() => [
-  { label: 'Reference', value: props.payment.paymentReference, mono: true },
-  { label: 'Claim', value: props.payment.claimNumber, mono: true },
-  { label: 'Payer', value: props.payment.payerName },
-  { label: 'Payee', value: props.payment.payeeName },
-  { label: 'Patient', value: props.payment.patientName },
-  { label: 'Method', value: props.payment.method },
-  { label: 'Created', value: dateTime(props.payment.createdAt) },
-  { label: 'Initiated', value: dateTime(props.payment.initiatedAt) },
-  { label: 'Settled', value: dateTime(props.payment.settledAt) },
-])
+const facts = computed(() => {
+  const base = [
+    { label: 'Reference', value: props.payment.paymentReference, mono: true },
+    { label: 'Claim', value: props.payment.claimNumber, mono: true },
+  ]
+  if (props.variant === 'receipt') {
+    return [
+      ...base,
+      { label: 'Created', value: dateTime(props.payment.createdAt) },
+      { label: 'Settled', value: dateTime(props.payment.settledAt) },
+    ]
+  }
+  return [
+    ...base,
+    { label: 'Payer', value: props.payment.payerName },
+    { label: 'Payee', value: props.payment.payeeName },
+    { label: 'Patient', value: props.payment.patientName },
+    { label: 'Method', value: props.payment.method },
+    { label: 'Created', value: dateTime(props.payment.createdAt) },
+    { label: 'Initiated', value: dateTime(props.payment.initiatedAt) },
+    { label: 'Settled', value: dateTime(props.payment.settledAt) },
+  ]
+})
 </script>
 
 <template>
@@ -28,7 +50,7 @@ const facts = computed(() => [
     <section class="surface p-5">
       <div class="flex flex-wrap items-start justify-between gap-5">
         <div>
-          <p class="label">Payout amount</p>
+          <p class="label">{{ variant === 'receipt' ? 'Amount settled' : 'Payout amount' }}</p>
           <p class="tnum mt-1 text-3xl font-semibold tracking-tight text-mist-100">
             {{ money(payment.amount) }}
           </p>

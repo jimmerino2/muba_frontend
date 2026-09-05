@@ -137,68 +137,28 @@ export async function getMyClaimById(_patientId: string, claimId: string): Promi
 /* ------------------------------------------------------------- payments */
 
 /**
- * `GET /api/payments` returns an empty list for a `USER` — a payment is between
- * the insurer and the hospital, and the patient is not a party to it. Their
- * claims still carry the settlement digest, which is what the payments view
- * actually renders, so this reconstructs the row from the claim rather than
- * showing a patient an empty page for payouts that genuinely happened.
+ * `GET /api/payments` scopes a `USER` caller to payments settling their own
+ * claims (a payment is between the insurer and the hospital, but the patient
+ * it was for is still allowed to see it happened — see the backend's
+ * `payment-service.ts` `listPayments`/`isMember`). Each row carries a real
+ * payment id, so `getPaymentById` on the resulting rows works exactly the
+ * same way it does for hospital/insurance.
  */
 export async function getMyPayments(
   _patientId: string,
   query: ListQuery = {},
 ): Promise<Paginated<Payment>> {
-  const direct = await http<WirePayment[]>('/api/payments')
-  if (direct && direct.length > 0) {
-    const rows = await Promise.all(
-      direct.map(async (payment) => {
-        const claim = await http<WireClaim>(`/api/claims/${payment.claimId}`)
-        const names = claim ? await claimNames(claim) : null
-        return toPayment(payment, {
-          claimNumber: claim?.claimNumber ?? '—',
-          payerName: names?.insurerName ?? 'Insurer',
-          payeeName: names?.hospitalName ?? 'Hospital',
-          patientName: names?.patientName ?? '',
-        })
-      }),
-    )
-    return paginate(
-      rows
-        .filter((p) => (query.status ? p.status === query.status : true))
-        .sort(newestFirst((p) => p.createdAt)),
-      query,
-    )
-  }
-
-  const claims = await http<WireClaim[]>('/api/claims')
-  const settled = (claims ?? []).filter((c) => c.suiTxDigest !== null)
+  const wire = await http<WirePayment[]>('/api/payments')
   const rows = await Promise.all(
-    settled.map(async (claim) => {
-      const names = await claimNames(claim)
-      return toPayment(
-        {
-          id: names.paymentId ?? `claim-${claim.id}`,
-          claimId: claim.id,
-          payerOrganizationId: claim.insuranceOrganizationId,
-          payeeOrganizationId: claim.hospitalOrganizationId,
-          amount: claim.approvedAmount ?? claim.claimAmount,
-          // Mirrors the backend's own display-only conversion; the settled
-          // amount itself is never converted.
-          amountUsdc: Math.round(((claim.approvedAmount ?? claim.claimAmount) / 4.7) * 100) / 100,
-          status: claim.status === 'CLOSED' || claim.status.startsWith('PAYMENT') ? 'SETTLED' : 'PENDING',
-          failureReason: null,
-          suiTxDigest: claim.suiTxDigest,
-          settlementReference: claim.settlementReference,
-          createdAt: claim.updatedAt,
-          initiatedAt: claim.updatedAt,
-          completedAt: claim.updatedAt,
-        },
-        {
-          claimNumber: claim.claimNumber,
-          payerName: names.insurerName,
-          payeeName: names.hospitalName,
-          patientName: names.patientName,
-        },
-      )
+    (wire ?? []).map(async (payment) => {
+      const claim = await http<WireClaim>(`/api/claims/${payment.claimId}`)
+      const names = claim ? await claimNames(claim) : null
+      return toPayment(payment, {
+        claimNumber: claim?.claimNumber ?? '—',
+        payerName: names?.insurerName ?? 'Insurer',
+        payeeName: names?.hospitalName ?? 'Hospital',
+        patientName: names?.patientName ?? '',
+      })
     }),
   )
 

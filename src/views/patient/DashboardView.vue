@@ -12,6 +12,7 @@ import PaymentStatusBadge from '@/components/PaymentStatusBadge.vue'
 import SkeletonBlock from '@/components/ui/SkeletonBlock.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
+import CoverageRemaining from '@/components/CoverageRemaining.vue'
 
 const auth = useAuthStore()
 const patientId = auth.patientId!
@@ -49,6 +50,15 @@ const stats = computed(() => {
 })
 
 const recentClaims = computed(() => (data.value?.claims ?? []).slice(0, 4))
+
+/** What's been drawn against the active policy's annual limit so far. */
+const policyUsed = computed(() => {
+  const policy = data.value?.policy
+  if (!policy) return 0
+  return (data.value?.claims ?? [])
+    .filter((c) => c.policyId === policy.id)
+    .reduce((sum, c) => sum + (c.amountApproved ?? 0), 0)
+})
 </script>
 
 <template>
@@ -56,13 +66,31 @@ const recentClaims = computed(() => (data.value?.claims ?? []).slice(0, 4))
     <PageHeader
       :title="`Welcome back, ${data?.me.name.split(' ')[0] ?? '—'}`"
       subtitle="Your cover, your claims, and the reasoning behind every decision made about them."
-    />
+      size="lg"
+    >
+      <template #actions>
+        <RouterLink to="/patient/claims" class="btn-primary">View all claims</RouterLink>
+        <RouterLink to="/patient/records" class="btn-ghost">Browse medical records</RouterLink>
+        <a
+          v-if="data?.records[0]"
+          :href="`mailto:claims@example.test?subject=Query about ${data.records[0].recordNumber}`"
+          class="btn-ghost"
+        >
+          Contact {{ data.records[0].hospitalName }}
+        </a>
+      </template>
+    </PageHeader>
 
     <ErrorState v-if="error" :message="error" class="mb-6" @retry="refresh" />
 
     <!-- Active cover -->
     <section class="mb-6">
-      <h2 class="label mb-3">Active insurance</h2>
+      <div class="mb-3 flex items-center justify-between">
+        <h2 class="label">Active insurance</h2>
+        <RouterLink to="/patient/policies" class="text-xs text-mist-500 hover:text-gonka-400">
+          View all policies →
+        </RouterLink>
+      </div>
 
       <div v-if="loading" class="surface p-5"><SkeletonBlock :lines="3" /></div>
 
@@ -91,13 +119,7 @@ const recentClaims = computed(() => (data.value?.claims ?? []).slice(0, 4))
             <p class="tnum mt-3 font-mono text-sm text-mist-300">{{ data.policy.policyNumber }}</p>
           </div>
 
-          <dl class="grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-3">
-            <div>
-              <dt class="label">Annual limit</dt>
-              <dd class="tnum mt-1 text-sm font-medium text-mist-100">
-                {{ money(data.policy.coverageLimit) }}
-              </dd>
-            </div>
+          <dl class="flex gap-6">
             <div>
               <dt class="label">Deductible</dt>
               <dd class="tnum mt-1 text-sm font-medium text-mist-100">
@@ -110,6 +132,10 @@ const recentClaims = computed(() => (data.value?.claims ?? []).slice(0, 4))
             </div>
           </dl>
         </div>
+
+        <div class="relative mt-5 border-t border-ink-700/70 pt-4">
+          <CoverageRemaining :used="policyUsed" :limit="data.policy.coverageLimit" />
+        </div>
       </div>
 
       <EmptyState
@@ -121,7 +147,7 @@ const recentClaims = computed(() => (data.value?.claims ?? []).slice(0, 4))
     </section>
 
     <!-- Claim buckets -->
-    <section class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <section class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <StatCard label="Total claims" :value="stats.total" :loading="loading" to="/patient/claims" />
       <StatCard
         label="Pending"
@@ -260,18 +286,5 @@ const recentClaims = computed(() => (data.value?.claims ?? []).slice(0, 4))
         </ul>
       </section>
     </div>
-
-    <!-- Actions -->
-    <section class="mt-6 flex flex-wrap gap-2">
-      <RouterLink to="/patient/claims" class="btn-primary">View all claims</RouterLink>
-      <RouterLink to="/patient/records" class="btn-ghost">Browse medical records</RouterLink>
-      <a
-        v-if="data?.records[0]"
-        :href="`mailto:claims@example.test?subject=Query about ${data.records[0].recordNumber}`"
-        class="btn-ghost"
-      >
-        Contact {{ data.records[0].hospitalName }}
-      </a>
-    </section>
   </div>
 </template>

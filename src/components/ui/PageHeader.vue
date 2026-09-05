@@ -2,11 +2,17 @@
 import { RouterLink } from 'vue-router'
 import type { RouteLocationRaw } from 'vue-router'
 
-defineProps<{
-  title: string
-  subtitle?: string
-  back?: { to: RouteLocationRaw; label: string }
-}>()
+withDefaults(
+  defineProps<{
+    title: string
+    subtitle?: string
+    back?: { to: RouteLocationRaw; label: string }
+    /** 'lg' gives the page's own headline (e.g. a dashboard greeting) more
+     * visual weight — everywhere else keeps the standard page-title size. */
+    size?: 'default' | 'lg'
+  }>(),
+  { size: 'default' },
+)
 </script>
 
 <template>
@@ -21,8 +27,13 @@ defineProps<{
 
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div class="min-w-0">
-        <h1 class="text-2xl font-semibold tracking-tight text-mist-100">{{ title }}</h1>
-        <p v-if="subtitle" class="mt-1 max-w-2xl text-sm leading-relaxed text-mist-500">
+        <h1
+          class="font-semibold tracking-tight text-mist-100"
+          :class="size === 'lg' ? 'text-3xl sm:text-4xl' : 'text-2xl'"
+        >
+          {{ title }}
+        </h1>
+        <p v-if="subtitle" class="mt-1.5 max-w-2xl text-sm leading-relaxed text-mist-500">
           {{ subtitle }}
         </p>
       </div>

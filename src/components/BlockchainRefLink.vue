@@ -51,15 +51,23 @@ withDefaults(
       <div class="flex items-center gap-2.5">
         <span class="h-2 w-2 rounded-full bg-sui-500 shadow-[0_0_10px_2px_rgba(124,138,255,.45)]" aria-hidden="true" />
         <h2 id="chain-ref-heading" class="text-sm font-semibold tracking-tight text-mist-100">
-          {{ reference.kind === 'settlement' ? 'Sui settlement' : 'Sui attestation' }}
+          {{ reference.kind === 'settlement' ? 'Payment settled on Sui' : 'Verification recorded on Sui' }}
         </h2>
       </div>
       <span
         class="rounded-md border border-sui-600/35 bg-sui-950/60 px-2 py-1 text-2xs font-medium uppercase tracking-wider text-sui-400"
       >
-        Testnet · Simulated payout
+        {{ reference.kind === 'settlement' ? 'Testnet · Simulated payout' : 'Testnet · On-chain record' }}
       </span>
     </header>
+
+    <p class="border-b border-ink-700/70 px-5 py-2.5 text-xs leading-relaxed text-mist-500">
+      {{
+        reference.kind === 'settlement'
+          ? 'The transfer to the provider — a separate transaction from the verification below.'
+          : 'The Truth Score and decision, written to Sui independently of any later payment.'
+      }}
+    </p>
 
     <div class="space-y-4 p-5">
       <div>

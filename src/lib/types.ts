@@ -20,6 +20,11 @@ export interface User {
   orgId?: string
   orgName?: string
   jobTitle?: string
+  /** True only for a seeded demo/dev-login account (see `ENABLE_DEV_LOGIN`) or
+   * any mock-mode session. Never true for a real zkLogin (Google) session —
+   * the "view as another role" switcher checks this so a real signed-in
+   * user's own session can never be silently swapped for a seeded one. */
+  isDemo?: boolean
 }
 
 export interface Patient {

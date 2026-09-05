@@ -185,25 +185,25 @@ export async function getPatientById(
       .map((c) => hydrateClaim(c, false)),
   )
 
-  // A hospital cannot browse an insurer's book of policies (the backend returns
-  // an empty list by design — see API.md on `GET /policies`), but it can resolve
-  // the specific policies already referenced by this patient's claims, which is
-  // exactly what it needs to file against.
-  const policyIds = [...new Set(claims.map((c) => c.policyId))]
-  const policies = (
-    await Promise.all(
-      policyIds.map(async (id) => {
-        const policy = await cache.policies.get(id)
-        if (!policy) return null
-        const insurer = await organizationName(policy.insuranceOrganizationId)
-        return toPolicy(
-          policy,
-          { insurerName: insurer, holderName: wirePatient.name },
-          TRUTH_SCORE_THRESHOLD,
-        )
-      }),
-    )
-  ).filter((p): p is Policy => p !== null)
+  // A hospital cannot browse an insurer's whole book of policies, but
+  // `GET /api/policies?patientId=` scopes to exactly this one patient — the
+  // policy an insurer has just set up for them shows up here immediately,
+  // not only once a claim has already referenced it.
+  const wirePolicies = await http<WirePolicy[]>(
+    `/api/policies?patientId=${encodeURIComponent(patientId)}`,
+  )
+  const policies = await Promise.all(
+    (wirePolicies ?? []).map(async (policy) => {
+      cache.policies.put(policy.id, policy)
+      const insurer = await organizationName(policy.insuranceOrganizationId)
+      return toPolicy(
+        policy,
+        { insurerName: insurer, holderName: wirePatient.name },
+        TRUTH_SCORE_THRESHOLD,
+      )
+    }),
+  )
+  const policyIds = policies.map((p) => p.id)
 
   return {
     patient: toPatient(wirePatient, policyIds),

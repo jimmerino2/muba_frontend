@@ -10,13 +10,30 @@ import PageHeader from '@/components/ui/PageHeader.vue'
 import DataTable from '@/components/DataTable.vue'
 import PaymentStatusBadge from '@/components/PaymentStatusBadge.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
+import CoverageRemaining from '@/components/CoverageRemaining.vue'
 
 const auth = useAuthStore()
-const { data, loading, error, refresh } = useAsync(() =>
-  patientsApi.getMyPayments(auth.patientId!),
-)
+const { data, loading, error, refresh } = useAsync(async () => {
+  const [payments, policies, claims] = await Promise.all([
+    patientsApi.getMyPayments(auth.patientId!),
+    patientsApi.getMyPolicies(auth.patientId!),
+    patientsApi.getMyClaims(auth.patientId!),
+  ])
+  return { payments, policies: policies.data, claims: claims.data }
+})
 
-const rows = computed(() => data.value?.data ?? [])
+const rows = computed(() => data.value?.payments.data ?? [])
+
+/** Combined across every policy held — the same "claimed vs limit" basis
+ * each policy's own detail page shows, totalled for a quick glance here. */
+const coverage = computed(() => {
+  const policies = data.value?.policies ?? []
+  const claims = data.value?.claims ?? []
+  return {
+    limit: policies.reduce((sum, p) => sum + p.coverageLimit, 0),
+    used: claims.reduce((sum, c) => sum + (c.amountApproved ?? 0), 0),
+  }
+})
 
 const columns: Column<Payment>[] = [
   { key: 'paymentReference', label: 'Reference', sortable: true, width: 'w-40' },
@@ -35,6 +52,10 @@ const columns: Column<Payment>[] = [
     />
 
     <ErrorState v-if="error" :message="error" class="mb-6" @retry="refresh" />
+
+    <section v-if="!loading && data?.policies.length" class="surface mb-5 p-5">
+      <CoverageRemaining :used="coverage.used" :limit="coverage.limit" />
+    </section>
 
     <div
       class="surface mb-5 flex items-start gap-3 border-l-2 border-l-sui-600 p-4"

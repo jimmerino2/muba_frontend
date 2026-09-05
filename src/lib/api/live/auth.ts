@@ -99,7 +99,7 @@ function initialsFor(name: string | null | undefined): string {
   return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase()
 }
 
-async function toSession(wire: WireSession): Promise<Session> {
+async function toSession(wire: WireSession, isDemo = false): Promise<Session> {
   const role = roleFor(wire.identity.actorType)
 
   // The org's *name* isn't on the login response — only its id — so it is
@@ -121,6 +121,7 @@ async function toSession(wire: WireSession): Promise<Session> {
     email: wire.account.email ?? '',
     role,
     avatarInitials: initialsFor(wire.account.displayName),
+    isDemo,
     ...(role === 'patient' ? { patientId: wire.account.id } : {}),
     ...(wire.identity.organizationId
       ? {
@@ -263,7 +264,7 @@ export async function signInWithZkLogin(): Promise<Session> {
     auth: false,
   })
 
-  const session = await toSession(wire)
+  const session = await toSession(wire, false)
   persist(session)
   return session
 }
@@ -305,7 +306,7 @@ export async function signInAsDemoAccount(email: string): Promise<Session> {
     body: { email },
     auth: false,
   })
-  const session = await toSession(wire)
+  const session = await toSession(wire, true)
   persist(session)
   return session
 }
