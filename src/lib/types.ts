@@ -284,6 +284,10 @@ export interface VerificationResult {
   model: string
   router: 'Gonka Router'
   latencyMs: number
+  /** The minimum Truth Score this claim's policy required to clear —
+   * per-policy, not a flat platform constant. */
+  threshold: number
+  passesThreshold: boolean
   verifiedAt: string
 }
 

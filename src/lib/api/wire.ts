@@ -122,6 +122,11 @@ export interface WirePolicy {
     /** The insurer-set ceiling up to which the administering TPA may decide a
      * claim alone; null when the policy has no TPA delegation. */
     tpaApprovalLimit: number | null
+    /** Overrides the backend's platform-wide truthScoreThreshold default for
+     * claims against this policy; null means "use the platform default" —
+     * see `live/config.ts` getPlatformTruthScoreThreshold and `adapters.ts`
+     * toPolicy. */
+    minTrustScore?: number | null
   }
   createdAt: string
   updatedAt: string
@@ -305,6 +310,13 @@ export interface WireGonkaRequest {
   }[]
   model: string
   latencyMs: number
+  /** The minimum Truth Score this specific claim's policy required —
+   * `coverageRules.minTrustScore` if the policy set one, else the backend's
+   * platform default. Use this (not `live/config.ts`
+   * getPlatformTruthScoreThreshold) for anything about *this*
+   * verification's own pass/fail line — it's exact, not a fallback guess. */
+  threshold: number
+  passesThreshold: boolean
   decision: 'APPROVE' | 'REJECT' | 'REQUIRES_REVIEW'
   attestationDigest: string | null
   createdAt: string
@@ -316,6 +328,14 @@ export interface WireVerifyOutcome {
   /** null when the claim was rejected at the policy or clause stage — no Gonka
    * call happens in that case, so nothing is persisted. */
   verification: WireGonkaRequest | null
+}
+
+/** `GET /api/gonka/models` — models actually available on this Gonka Router
+ * account/plan, so a caller can offer a real, working choice rather than a
+ * guessed one. */
+export interface WireGonkaModels {
+  models: string[]
+  default: string
 }
 
 /* -------------------------------------------------------------- payments */

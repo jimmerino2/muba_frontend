@@ -12,7 +12,7 @@ import { notFound } from '../client'
 import type { WireClaim, WireMedicalRecord, WirePatient, WirePayment, WirePolicy } from '../wire'
 import { toClaim, toMedicalRecord, toPatient, toPayment, toPolicy } from '../adapters'
 import { cache, claimEvents, claimNames, organizationName, patientName } from './_resolve'
-import { TRUTH_SCORE_THRESHOLD } from './config'
+import { getPlatformTruthScoreThreshold } from './config'
 
 /**
  * The patient's own view. Every route here is already scoped to the signed-in
@@ -177,16 +177,13 @@ export async function getMyPolicies(_patientId: string): Promise<Paginated<Polic
   const rows = await Promise.all(
     (wire ?? []).map(async (policy) => {
       cache.policies.put(policy.id, policy)
-      const [insurer, holder, tpa] = await Promise.all([
+      const [insurer, holder, tpa, threshold] = await Promise.all([
         organizationName(policy.insuranceOrganizationId),
         patientName(policy.patientRef),
         policy.tpaOrganizationId ? organizationName(policy.tpaOrganizationId) : Promise.resolve(null),
+        getPlatformTruthScoreThreshold(),
       ])
-      return toPolicy(
-        policy,
-        { insurerName: insurer, holderName: holder, tpaName: tpa },
-        TRUTH_SCORE_THRESHOLD,
-      )
+      return toPolicy(policy, { insurerName: insurer, holderName: holder, tpaName: tpa }, threshold)
     }),
   )
   return paginate(rows)

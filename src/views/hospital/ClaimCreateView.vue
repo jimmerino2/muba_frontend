@@ -2,10 +2,12 @@
 import { computed, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import type { Claim, Policy } from '@/lib/types'
+import type { ClaimClauseContextInput } from '@/lib/api/hospitals'
 import { useAuthStore } from '@/stores/auth'
 import { useAsync } from '@/lib/useAsync'
 import { useVerificationRun } from '@/lib/useVerificationRun'
 import * as hospitalsApi from '@/lib/api/hospitals'
+import * as gonkaApi from '@/lib/api/gonka'
 import { money } from '@/lib/format'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import TruthScorePanel from '@/components/TruthScorePanel.vue'
@@ -25,7 +27,63 @@ const { data, loading, error, refresh } = useAsync(async () => {
   return { record, policies: detail.policies }
 })
 
-const form = ref({ policyId: '', treatmentDescription: '', amountRequested: 0 })
+const form = ref({ policyId: '', treatmentDescription: '', amountRequested: 0, model: '' })
+
+/** Empty string means "use the backend's default model" — not sent as an
+ * override at all, see submit() below. */
+const { data: gonkaModels } = useAsync(() => gonkaApi.listModels())
+
+const FACILITY_TYPES: { value: NonNullable<ClaimClauseContextInput['facilityType']>; label: string }[] = [
+  { value: 'PRIVATE_HOSPITAL', label: 'Private hospital' },
+  { value: 'GOVERNMENT_HOSPITAL', label: 'Government hospital' },
+  { value: 'GOVERNMENT_CLINIC', label: 'Government clinic' },
+  { value: 'DIALYSIS_CENTRE', label: 'Dialysis centre' },
+  { value: 'CANCER_CENTRE', label: 'Cancer centre' },
+  { value: 'CLINIC', label: 'Clinic' },
+]
+
+/**
+ * Facts the policy's contract clauses turn on — see clauses-service.ts. Left
+ * unanswered (blank / '' / null), a clause that needs one of these comes back
+ * INCONCLUSIVE and routes the whole claim to a human, even with a high Truth
+ * Score: a missing fact is never silently treated as a pass. Defaulting the
+ * country to Malaysia matches the overwhelming common case without forcing
+ * every claim through this field to reach auto-approval.
+ */
+const clauseContext = ref({
+  treatmentCountry: 'MY',
+  consecutiveDaysAbroad: 0,
+  facilityType: '' as '' | NonNullable<ClaimClauseContextInput['facilityType']>,
+  roomRatePerDay: null as number | null,
+  admissionDays: null as number | null,
+  roomClass: '',
+})
+
+/** The room-entitlement clause only ever applies to a claim that actually
+ * bills a Room & Board line item — asking for a room rate on every claim
+ * would be noise for the (common) day-case/outpatient majority. */
+const hasRoomAndBoard = computed(
+  () => seed.value?.record.lineItems.some((item) => item.category === 'Room & Board') ?? false,
+)
+const treatedAbroad = computed(
+  () => clauseContext.value.treatmentCountry.trim().toUpperCase() !== 'MY',
+)
+
+function buildClauseContext(): ClaimClauseContextInput | undefined {
+  const ctx: ClaimClauseContextInput = {}
+  const country = clauseContext.value.treatmentCountry.trim().toUpperCase()
+  if (country) ctx.treatmentCountry = country
+  if (treatedAbroad.value && clauseContext.value.consecutiveDaysAbroad > 0) {
+    ctx.consecutiveDaysAbroad = clauseContext.value.consecutiveDaysAbroad
+  }
+  if (clauseContext.value.facilityType) ctx.facilityType = clauseContext.value.facilityType
+  if (hasRoomAndBoard.value) {
+    if (clauseContext.value.roomRatePerDay) ctx.roomRatePerDay = clauseContext.value.roomRatePerDay
+    if (clauseContext.value.admissionDays) ctx.admissionDays = clauseContext.value.admissionDays
+    if (clauseContext.value.roomClass.trim()) ctx.roomClass = clauseContext.value.roomClass.trim()
+  }
+  return Object.keys(ctx).length > 0 ? ctx : undefined
+}
 
 /** Prefill from the record once it lands — the provider edits rather than retypes. */
 const prefilled = ref(false)
@@ -77,6 +135,7 @@ async function submit(alsoSubmitToInsurer: boolean) {
       treatmentDescription: form.value.treatmentDescription,
       amountRequested: Number(form.value.amountRequested),
       submit: alsoSubmitToInsurer,
+      clauseContext: buildClauseContext(),
     })
   } catch (e) {
     submitError.value = e instanceof Error ? e.message : 'The claim could not be created.'
@@ -91,7 +150,7 @@ async function submit(alsoSubmitToInsurer: boolean) {
   }
 
   phase.value = 'running'
-  const outcome = await verify.run(claim.id)
+  const outcome = await verify.run(claim.id, form.value.model || undefined)
   if (!outcome) {
     submitError.value = verify.error.value
     // The claim exists and is submitted; only the verification leg failed.
@@ -188,6 +247,111 @@ const canSubmit = computed(
                 </p>
               </div>
             </div>
+
+            <div>
+              <label for="model" class="label mb-1.5 block">Verification model</label>
+              <select id="model" v-model="form.model" class="field">
+                <option value="">
+                  Platform default{{ gonkaModels ? ` (${gonkaModels.default})` : '' }}
+                </option>
+                <option v-for="m in gonkaModels?.models ?? []" :key="m" :value="m">{{ m }}</option>
+              </select>
+              <p class="mt-1.5 text-xs text-mist-500">
+                The Gonka Router model that scores this claim's plausibility. Leave on the platform
+                default unless you have a reason to compare another model's verdict.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Facts the policy's own contract clauses (not the AI trust check) turn on.
+             Left blank, an affected clause comes back INCONCLUSIVE and routes the
+             claim to a human regardless of Truth Score — see the note below the
+             fields for exactly why this section exists. -->
+        <section v-if="selectedPolicy?.productPlanId" class="surface p-5">
+          <h2 class="mb-1 text-sm font-semibold tracking-tight text-mist-100">Contract context</h2>
+          <p class="mb-4 text-xs leading-relaxed text-mist-500">
+            This policy is written against a contract with clauses that need these facts to check
+            automatically. Leaving one blank does not skip the check — it sends the claim to a human
+            to confirm instead.
+          </p>
+
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label for="treatment-country" class="label mb-1.5 block">Treatment country</label>
+              <input
+                id="treatment-country"
+                v-model="clauseContext.treatmentCountry"
+                type="text"
+                maxlength="2"
+                placeholder="MY"
+                class="field uppercase"
+              />
+              <p class="mt-1.5 text-xs text-mist-500">
+                ISO country code — MY, SG or BN are within the covered territory.
+              </p>
+            </div>
+
+            <div v-if="treatedAbroad">
+              <label for="days-abroad" class="label mb-1.5 block">
+                Consecutive days treated abroad
+              </label>
+              <input
+                id="days-abroad"
+                v-model.number="clauseContext.consecutiveDaysAbroad"
+                type="number"
+                min="0"
+                class="field tnum"
+              />
+            </div>
+
+            <div>
+              <label for="facility-type" class="label mb-1.5 block">Facility type</label>
+              <select id="facility-type" v-model="clauseContext.facilityType" class="field">
+                <option value="">Unspecified</option>
+                <option v-for="f in FACILITY_TYPES" :key="f.value" :value="f.value">
+                  {{ f.label }}
+                </option>
+              </select>
+            </div>
+
+            <template v-if="hasRoomAndBoard">
+              <div>
+                <label for="room-rate" class="label mb-1.5 block">Daily room rate (MYR)</label>
+                <input
+                  id="room-rate"
+                  v-model.number="clauseContext.roomRatePerDay"
+                  type="number"
+                  min="0"
+                  step="1"
+                  class="field tnum"
+                />
+              </div>
+              <div>
+                <label for="admission-days" class="label mb-1.5 block">Admission days</label>
+                <input
+                  id="admission-days"
+                  v-model.number="clauseContext.admissionDays"
+                  type="number"
+                  min="0"
+                  class="field tnum"
+                />
+              </div>
+              <div>
+                <label for="room-class" class="label mb-1.5 block">Room class (as billed)</label>
+                <input
+                  id="room-class"
+                  v-model="clauseContext.roomClass"
+                  type="text"
+                  placeholder="e.g. Standard Single"
+                  class="field"
+                />
+                <p class="mt-1.5 text-xs text-mist-500">
+                  This record bills a Room & Board line item, so the room-entitlement clause needs
+                  the daily rate and admission days to check it automatically.
+                </p>
+              </div>
+            </template>
           </div>
         </section>
 

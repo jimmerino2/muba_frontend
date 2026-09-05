@@ -1,5 +1,7 @@
 import type { Claim, TruthBand, VerificationFactor, VerificationResult } from '@/lib/types'
 import { ago, now } from './_time'
+import { claims } from './claims'
+import { policies } from './policies'
 
 export const TRUTH_MODEL = 'gonka/med-claims-verifier-v2'
 
@@ -17,12 +19,20 @@ const f = (
   weight: number,
 ): VerificationFactor => ({ label, detail, impact, weight })
 
+/** Each fixture's own claim's own policy — never a flat platform constant —
+ * decides whether its Truth Score cleared, same as the live backend. */
+function thresholdFor(claimId: string): number {
+  const claim = claims.find((c) => c.id === claimId)
+  const policy = claim ? policies.find((p) => p.id === claim.policyId) : undefined
+  return policy?.truthScoreThreshold ?? 80
+}
+
 /**
  * Gonka Router verification results, keyed by claim id. Claims still awaiting
  * verification (`submitted`) and drafts (`created`) deliberately have no entry —
  * the UI must render an honest "not yet verified" state rather than a zero score.
  */
-export const verifications: Record<string, VerificationResult> = {
+const rawVerifications: Record<string, Omit<VerificationResult, 'threshold' | 'passesThreshold'>> = {
   clm_001: {
     claimId: 'clm_001',
     requestId: 'gonka-req-4b71c9ea',
@@ -246,6 +256,13 @@ export const verifications: Record<string, VerificationResult> = {
   },
 }
 
+export const verifications: Record<string, VerificationResult> = Object.fromEntries(
+  Object.entries(rawVerifications).map(([claimId, v]) => {
+    const threshold = thresholdFor(claimId)
+    return [claimId, { ...v, threshold, passesThreshold: v.truthScore >= threshold }]
+  }),
+)
+
 const HEX = 'abcdef0123456789'
 
 function requestId(): string {
@@ -263,6 +280,7 @@ function requestId(): string {
 export function generateVerification(
   claim: Claim,
   documentCount: number,
+  truthScoreThreshold: number,
   icd10Code?: string,
 ): VerificationResult {
   const factors: VerificationFactor[] = []
@@ -361,6 +379,8 @@ export function generateVerification(
     model: TRUTH_MODEL,
     router: 'Gonka Router',
     latencyMs: 1_600 + Math.floor(Math.random() * 2_600),
+    threshold: truthScoreThreshold,
+    passesThreshold: score >= truthScoreThreshold,
     verifiedAt: now(),
   }
 }

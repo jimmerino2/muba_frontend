@@ -12,7 +12,7 @@ import { http, paginate } from '../http'
 import type { WireClaim, WirePayment } from '../wire'
 import { toClaim, toPatient, toPayment, toPolicy } from '../adapters'
 import { cache, claimEvents, claimNames, invalidatePayments, organizationName } from './_resolve'
-import { TRUTH_SCORE_THRESHOLD } from './config'
+import { getPlatformTruthScoreThreshold } from './config'
 
 /**
  * The TPA view — the delegated review queue.
@@ -168,9 +168,10 @@ export async function getClaimById(tpaId: string, claimId: string): Promise<TpaC
   if (!wirePolicy) throw notFound('Policy', wire.policyId)
 
   const wirePatient = await cache.patients.get(wire.patientRef)
-  const [insurerName, tpaName] = await Promise.all([
+  const [insurerName, tpaName, threshold] = await Promise.all([
     organizationName(wirePolicy.insuranceOrganizationId),
     wirePolicy.tpaOrganizationId ? organizationName(wirePolicy.tpaOrganizationId) : Promise.resolve(null),
+    getPlatformTruthScoreThreshold(),
   ])
 
   return {
@@ -178,7 +179,7 @@ export async function getClaimById(tpaId: string, claimId: string): Promise<TpaC
     policy: toPolicy(
       wirePolicy,
       { insurerName, holderName: wirePatient?.name ?? claim.patientName, tpaName },
-      TRUTH_SCORE_THRESHOLD,
+      threshold,
     ),
     patient: wirePatient ? toPatient(wirePatient) : null,
   }

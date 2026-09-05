@@ -14,6 +14,7 @@ import { badRequest, notFound } from '../client'
 import { http, paginate } from '../http'
 import type {
   WireClaim,
+  WireClauseContext,
   WireDocumentRef,
   WireMedicalRecord,
   WireOrganization,
@@ -30,7 +31,7 @@ import {
   organizationName,
   patientName,
 } from './_resolve'
-import { TRUTH_SCORE_THRESHOLD } from './config'
+import { getPlatformTruthScoreThreshold } from './config'
 
 /**
  * The hospital / TPA view.
@@ -196,12 +197,11 @@ export async function getPatientById(
   const policies = await Promise.all(
     (wirePolicies ?? []).map(async (policy) => {
       cache.policies.put(policy.id, policy)
-      const insurer = await organizationName(policy.insuranceOrganizationId)
-      return toPolicy(
-        policy,
-        { insurerName: insurer, holderName: wirePatient.name },
-        TRUTH_SCORE_THRESHOLD,
-      )
+      const [insurer, threshold] = await Promise.all([
+        organizationName(policy.insuranceOrganizationId),
+        getPlatformTruthScoreThreshold(),
+      ])
+      return toPolicy(policy, { insurerName: insurer, holderName: wirePatient.name }, threshold)
     }),
   )
   const policyIds = policies.map((p) => p.id)
@@ -314,12 +314,26 @@ export async function uploadDocument(
 
 /* ---------------------------------------------------------------- claims */
 
+/** The facts a claim's contract clauses turn on — see `wire.ts`
+ * WireClauseContext. `benefitCodes` and `deductibleConsumedThisPolicyYear`
+ * are excluded here: the backend derives the former from the record's own
+ * line items and owns the latter itself, so neither belongs on a form. */
+export type ClaimClauseContextInput = Partial<
+  Omit<WireClauseContext, 'benefitCodes' | 'deductibleConsumedThisPolicyYear'>
+>
+
 export interface CreateClaimPayload {
   policyId: string
   treatmentDescription: string
   amountRequested: number
   /** When false the claim is saved as a `created` draft instead of submitted. */
   submit: boolean
+  /** Left unset (not just all-null fields) when the hospital gives no
+   * contract-context facts at all, so the backend derives what it can rather
+   * than the request pointlessly carrying an all-null object. A clause whose
+   * fact is missing here comes back INCONCLUSIVE and routes to a human — see
+   * `live/config.ts`'s sibling note on never guessing a fact silently. */
+  clauseContext?: ClaimClauseContextInput
 }
 
 /**
@@ -355,6 +369,7 @@ export async function createClaimFromRecord(
       claimAmount: payload.amountRequested,
       claimType: 'GL',
       submit: payload.submit,
+      ...(payload.clauseContext ? { clauseContext: payload.clauseContext } : {}),
     },
   })
 

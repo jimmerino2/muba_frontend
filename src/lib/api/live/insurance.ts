@@ -11,7 +11,7 @@ import { http, paginate } from '../http'
 import type { WireClaim, WirePatient, WirePayment, WirePolicy } from '../wire'
 import { toClaim, toPatient, toPolicy } from '../adapters'
 import { cache, claimEvents, claimNames, invalidatePayments, organizationName, patientName } from './_resolve'
-import { TRUTH_SCORE_THRESHOLD } from './config'
+import { getPlatformTruthScoreThreshold } from './config'
 
 /**
  * The insurer view — the review queue, the decisions, and the book of policies.
@@ -192,9 +192,10 @@ export async function getClaimById(
   if (!wirePolicy) throw notFound('Policy', wire.policyId)
 
   const wirePatient = await cache.patients.get(wire.patientRef)
-  const [insurerName, tpaName] = await Promise.all([
+  const [insurerName, tpaName, threshold] = await Promise.all([
     organizationName(wirePolicy.insuranceOrganizationId),
     wirePolicy.tpaOrganizationId ? organizationName(wirePolicy.tpaOrganizationId) : Promise.resolve(null),
+    getPlatformTruthScoreThreshold(),
   ])
 
   return {
@@ -202,7 +203,7 @@ export async function getClaimById(
     policy: toPolicy(
       wirePolicy,
       { insurerName, holderName: wirePatient?.name ?? claim.patientName, tpaName },
-      TRUTH_SCORE_THRESHOLD,
+      threshold,
     ),
     patient: wirePatient ? toPatient(wirePatient) : null,
   }
@@ -360,12 +361,13 @@ export async function getMembers(query: ListQuery = {}): Promise<Paginated<Patie
 
 async function hydratePolicy(policy: WirePolicy): Promise<Policy> {
   cache.policies.put(policy.id, policy)
-  const [insurer, holder, tpa] = await Promise.all([
+  const [insurer, holder, tpa, threshold] = await Promise.all([
     organizationName(policy.insuranceOrganizationId),
     patientName(policy.patientRef),
     policy.tpaOrganizationId ? organizationName(policy.tpaOrganizationId) : Promise.resolve(null),
+    getPlatformTruthScoreThreshold(),
   ])
-  return toPolicy(policy, { insurerName: insurer, holderName: holder, tpaName: tpa }, TRUTH_SCORE_THRESHOLD)
+  return toPolicy(policy, { insurerName: insurer, holderName: holder, tpaName: tpa }, threshold)
 }
 
 export async function getPolicies(
@@ -396,11 +398,10 @@ export type PolicyPayload = Omit<
 /**
  * `POST /api/policies`.
  *
- * `truthScoreThreshold` is accepted from the form but not sent: the backend
- * applies one platform-wide score threshold and only lets a policy override the
- * *amount* gate (`requiresReviewAbove`, which is what `autoApproveLimit` maps
- * to). Silently sending a field the backend ignores would be worse than not
- * sending it — see `live/config.ts` for the standing note on this.
+ * `truthScoreThreshold` is sent as `minTrustScore`, the backend's per-policy
+ * override of its platform-wide default (see `live/config.ts`
+ * getPlatformTruthScoreThreshold) — a policy no longer has to accept the
+ * platform value.
  *
  * `coveredTreatmentTypes` is likewise not on the UI's form, so it is omitted,
  * which the backend reads as "every treatment type is covered".
@@ -433,6 +434,7 @@ export async function createPolicy(
       requiresReviewAbove: payload.autoApproveLimit,
       tpaOrganizationId: payload.tpaOrganizationId,
       tpaApprovalLimit: payload.tpaApprovalLimit,
+      minTrustScore: payload.truthScoreThreshold,
     },
   })
   return hydratePolicy(policy)

@@ -4,7 +4,6 @@ import { http } from '../http'
 import type { WireClaim, WireGonkaRequest, WireVerifyOutcome } from '../wire'
 import { toVerificationResult } from '../adapters'
 import { invalidatePayments } from './_resolve'
-import { TRUTH_SCORE_THRESHOLD } from './config'
 
 /**
  * The pivot of the whole lifecycle.
@@ -72,7 +71,10 @@ export class ClaimRejectedBeforeVerification extends ApiError {
   }
 }
 
-export async function verifyClaim(claimId: string): Promise<VerifyOutcome> {
+/** `model` optionally overrides the backend's default Gonka Router model
+ * (`GONKA_MODEL`) for this one verification — see `lib/api/gonka.ts`
+ * listModels() for what's actually available to offer. */
+export async function verifyClaim(claimId: string, model?: string): Promise<VerifyOutcome> {
   // The Gonka call this triggers has no timeout of its own and is documented
   // as sometimes running 60s+ — bound it client-side so a hung request
   // surfaces a clear, retryable error instead of leaving the caller's UI
@@ -80,6 +82,7 @@ export async function verifyClaim(claimId: string): Promise<VerifyOutcome> {
   // view that renders VerificationSteps while this is in flight).
   const outcome = await http<WireVerifyOutcome>(`/api/verification/claims/${claimId}`, {
     method: 'POST',
+    body: model ? { model } : undefined,
     timeoutMs: 90_000,
   })
 
@@ -100,7 +103,8 @@ export async function verifyClaim(claimId: string): Promise<VerifyOutcome> {
   }
 
   const verification = toVerificationResult(outcome.verification)
-  const scoreCleared = verification.truthScore >= TRUTH_SCORE_THRESHOLD
+  const truthScoreThreshold = outcome.verification.threshold
+  const scoreCleared = outcome.verification.passesThreshold
   const autoApproveLimit = autoApproveLimitFor(claim)
   const amountCleared = claim.claimAmount <= autoApproveLimit
   const routedTo = claim.status === 'APPROVED' ? 'auto_approved' : 'pending_review'
@@ -108,10 +112,10 @@ export async function verifyClaim(claimId: string): Promise<VerifyOutcome> {
   return {
     verification,
     routedTo,
-    routingReason: routingReason(claim, scoreCleared, amountCleared, autoApproveLimit),
+    routingReason: routingReason(claim, scoreCleared, amountCleared, autoApproveLimit, truthScoreThreshold),
     scoreCleared,
     amountCleared,
-    truthScoreThreshold: TRUTH_SCORE_THRESHOLD,
+    truthScoreThreshold,
     autoApproveLimit,
     attestationDigest: outcome.verification.attestationDigest ?? '',
   }
@@ -137,12 +141,13 @@ function routingReason(
   scoreCleared: boolean,
   amountCleared: boolean,
   autoApproveLimit: number,
+  truthScoreThreshold: number,
 ): string {
   const money = (value: number) => `RM${value.toLocaleString('en-MY')}`
 
   if (claim.status === 'APPROVED') {
     return (
-      `Truth Score ${claim.truthScore} met the ${TRUTH_SCORE_THRESHOLD} threshold, ` +
+      `Truth Score ${claim.truthScore} met the ${truthScoreThreshold} threshold, ` +
       `${money(claim.claimAmount)} is within the auto-approval limit, and every contractual clause cleared — ` +
       'no human review required.'
     )
@@ -150,7 +155,7 @@ function routingReason(
 
   const reasons: string[] = []
   if (!scoreCleared) {
-    reasons.push(`Truth Score ${claim.truthScore} is below the ${TRUTH_SCORE_THRESHOLD} threshold`)
+    reasons.push(`Truth Score ${claim.truthScore} is below the ${truthScoreThreshold} threshold`)
   }
   if (!amountCleared) {
     reasons.push(`${money(claim.claimAmount)} exceeds the ${money(autoApproveLimit)} auto-approval limit`)

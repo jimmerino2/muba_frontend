@@ -8,7 +8,12 @@ import * as mock from './mock/hospitals'
  */
 const impl = API_MODE === 'mock' ? (mock as unknown as typeof live) : live
 
-export type { CreateClaimPayload, CreateRecordPayload, PatientDetail } from './live/hospitals'
+export type {
+  ClaimClauseContextInput,
+  CreateClaimPayload,
+  CreateRecordPayload,
+  PatientDetail,
+} from './live/hospitals'
 
 export const {
   getMe,

@@ -358,16 +358,16 @@ export function toClaim(claim: WireClaim, names: ClaimNames, events: ClaimEvent[
 /* -------------------------------------------------------------- policies */
 
 /**
- * The UI models a per-policy `truthScoreThreshold`; the backend applies one
- * platform-wide (`TRUTH_SCORE_THRESHOLD`) and lets a policy override only the
- * *amount* gate (`requiresReviewAbove`). Rather than fake a per-policy score
- * threshold, the platform value is passed in by the caller — which is what it
- * genuinely is — and the policy's own override drives `autoApproveLimit`.
+ * `coverageRules.minTrustScore` is the policy's own override of the
+ * backend's platform-wide default; when it's null (no override set),
+ * `platformDefaultThreshold` — see `live/config.ts`
+ * getPlatformTruthScoreThreshold, which reads the real value from
+ * `GET /api/config` — is used instead, same as the backend does.
  */
 export function toPolicy(
   policy: WirePolicy,
   names: { insurerName: string; holderName: string; tpaName?: string | null },
-  truthScoreThreshold: number,
+  platformDefaultThreshold: number,
 ): Policy {
   return {
     id: policy.id,
@@ -386,7 +386,7 @@ export function toPolicy(
     tpaOrganizationId: policy.tpaOrganizationId,
     tpaName: policy.tpaOrganizationId ? (names.tpaName ?? null) : null,
     tpaApprovalLimit: policy.coverageRules.tpaApprovalLimit,
-    truthScoreThreshold,
+    truthScoreThreshold: policy.coverageRules.minTrustScore ?? platformDefaultThreshold,
     deductible: policy.coverageRules.deductible,
     annualPremium: policy.annualPremium,
     startDate: policy.coverageStart,
@@ -539,6 +539,8 @@ export function toVerificationResult(request: WireGonkaRequest): VerificationRes
     model: request.model,
     router: 'Gonka Router',
     latencyMs: request.latencyMs,
+    threshold: request.threshold,
+    passesThreshold: request.passesThreshold,
     verifiedAt: request.completedAt,
   }
 }

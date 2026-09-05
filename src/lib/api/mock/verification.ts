@@ -47,7 +47,7 @@ export interface VerifyOutcome {
  * Deliberately slower than a data read — this is a model call, and the UI shows a
  * staged progress reveal against it rather than a generic spinner.
  */
-export async function verifyClaim(claimId: string): Promise<VerifyOutcome> {
+export async function verifyClaim(claimId: string, model?: string): Promise<VerifyOutcome> {
   const claim = claimRef(claimId)
 
   if (claim.status === 'created') {
@@ -60,7 +60,11 @@ export async function verifyClaim(claimId: string): Promise<VerifyOutcome> {
   const record = recordRef(claim.recordId)
   const policy = policyRef(claim.policyId)
 
-  const verification = generateVerification(claim, record.documents.length, record.icd10Code)
+  const verification = generateVerification(claim, record.documents.length, policy.truthScoreThreshold, record.icd10Code)
+  // No real Gonka Router behind the mock layer to actually re-run against a
+  // different model — reflect the caller's choice on the result so the UI
+  // still shows what was picked, same as the live path would.
+  if (model) verification.model = model
   storeVerification(verification)
 
   claim.status = 'verified'

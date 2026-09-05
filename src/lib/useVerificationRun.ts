@@ -26,7 +26,7 @@ export function useVerificationRun() {
   let timer: ReturnType<typeof setInterval> | undefined
   onUnmounted(() => clearInterval(timer))
 
-  async function run(claimId: string): Promise<VerifyOutcome | null> {
+  async function run(claimId: string, model?: string): Promise<VerifyOutcome | null> {
     running.value = true
     error.value = null
     stepIndex.value = 0
@@ -36,7 +36,7 @@ export function useVerificationRun() {
     }, 850)
 
     try {
-      const result = await verificationApi.verifyClaim(claimId)
+      const result = await verificationApi.verifyClaim(claimId, model)
       stepIndex.value = VERIFICATION_STEPS.length
       outcome.value = result
       return result
