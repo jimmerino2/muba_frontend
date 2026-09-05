@@ -96,7 +96,16 @@ export async function verifyClaim(
   const outcome = await http<WireVerifyOutcome>(`/api/verification/claims/${claimId}`, {
     method: 'POST',
     body: Object.keys(body).length > 0 ? body : undefined,
-    timeoutMs: 90_000,
+    // Real-world total for this one call: the Gonka call itself (60s+
+    // observed), a real Sui attestation, and — since auto-approval now
+    // settles synchronously — up to 3 on-chain settlement attempts with
+    // backoff between them (see the backend's payment-service.ts
+    // executeWithRetry). 90s was cutting it close enough to spuriously time
+    // out a request that was actually still going to succeed; 240s gives
+    // real headroom. If this still fires, useVerificationRun.ts recovers
+    // via recoverVerifyOutcome() rather than just showing the error, since
+    // the backend keeps working regardless of whether this client gave up.
+    timeoutMs: 240_000,
   })
 
   const claim = outcome?.claim
@@ -131,6 +140,63 @@ export async function verifyClaim(
     truthScoreThreshold,
     autoApproveLimit,
     attestationDigest: outcome.verification.attestationDigest ?? '',
+  }
+}
+
+/**
+ * Reconstructs the same VerifyOutcome shape verifyClaim() would have
+ * returned, from a plain read — for recovering after that call's own
+ * client-side timeout. A timeout means this browser gave up waiting, not
+ * that the backend did: verification and (for an auto-approved claim)
+ * settlement keep running server-side regardless (see CLAUDE.md "Claim
+ * States"), so by the time this is called the real outcome may already be
+ * sitting there waiting to be read back. Returns null when there's genuinely
+ * nothing to recover yet (claim not found, still VERIFYING, or rejected
+ * before any Gonka call ran) — the caller falls back to the original timeout
+ * error in that case, since there's nothing more this can tell it.
+ */
+export async function recoverVerifyOutcome(claimId: string): Promise<VerifyOutcome | null> {
+  let claim: WireClaim | undefined
+  try {
+    claim = await http<WireClaim>(`/api/claims/${claimId}`)
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null
+    throw error
+  }
+  if (!claim || claim.status === 'SUBMITTED' || claim.status === 'VERIFYING') return null
+
+  const verification = await getVerification(claimId)
+  if (!verification) return null
+
+  const truthScoreThreshold = verification.threshold
+  const scoreCleared = verification.passesThreshold
+  const autoApproveLimit = autoApproveLimitFor(claim)
+  const amountCleared = claim.claimAmount <= autoApproveLimit
+  const routedTo = claim.status === 'APPROVED' ? 'auto_approved' : 'pending_review'
+
+  // A settled/pending payment is the one side effect verifyClaim() itself
+  // triggers on success — recovering the same outcome should invalidate the
+  // same cached data, or a payments list fetched mid-recovery could still
+  // show the pre-settlement state.
+  invalidatePayments()
+
+  let attestationDigest = ''
+  try {
+    const ref = await http<{ digest: string } | null>(`/api/blockchain/claims/${claimId}`)
+    attestationDigest = ref?.digest ?? ''
+  } catch {
+    // Display-only — never block recovery on this.
+  }
+
+  return {
+    verification,
+    routedTo,
+    routingReason: routingReason(claim, scoreCleared, amountCleared, autoApproveLimit, truthScoreThreshold),
+    scoreCleared,
+    amountCleared,
+    truthScoreThreshold,
+    autoApproveLimit,
+    attestationDigest,
   }
 }
 

@@ -29,6 +29,14 @@ export async function getVerification(claimId: string): Promise<VerificationResu
   return respond(verificationFor(claimId))
 }
 
+/** The mock layer has no real network call to time out on, so there is
+ * nothing to recover — always null, which tells the caller to fall back to
+ * whatever error it already has. Exists only so the dispatcher can destructure
+ * the same shape regardless of API_MODE. */
+export async function recoverVerifyOutcome(): Promise<VerifyOutcome | null> {
+  return null
+}
+
 export interface VerifyOutcome {
   verification: VerificationResult
   /** Where the policy engine sent the claim once the score was known. */

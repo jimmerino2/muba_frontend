@@ -16,4 +16,4 @@ const impl = API_MODE === 'mock' ? (mock as unknown as typeof live) : live
 export type { VerifyOutcome } from './live/verification'
 export { ClaimRejectedBeforeVerification } from './live/verification'
 
-export const { getVerification, verifyClaim } = impl
+export const { getVerification, verifyClaim, recoverVerifyOutcome } = impl
