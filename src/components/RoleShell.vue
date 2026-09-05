@@ -36,6 +36,7 @@ interface NavItem {
 const NAV: Record<Role, NavItem[]> = {
   patient: [
     { to: '/patient/dashboard', label: 'Dashboard', glyph: '◈', hint: 'Cover, claims and payments at a glance' },
+    { to: '/patient/policies', label: 'Policies', glyph: '⛨', hint: 'Insurance plans you hold' },
     { to: '/patient/records', label: 'Records', glyph: '⛁', hint: 'Medical records your providers have filed' },
     { to: '/patient/claims', label: 'Claims', glyph: '◇', hint: 'Every claim raised against your policy' },
     { to: '/patient/payments', label: 'Payments', glyph: '⇄', hint: 'Settlements made to your providers' },
@@ -176,8 +177,14 @@ const ROLES: { key: Role; label: string }[] = [
         </dl>
       </div>
 
-      <!-- Dev-only role switcher, so reviewers can walk all three experiences -->
-      <div class="border-t border-ink-800 px-3 py-3">
+      <!--
+        Dev-only role switcher, so reviewers can walk all three experiences
+        without three Google accounts. Gated on the signed-in account itself
+        being a seeded demo/dev-login session (or mock mode) — a real zkLogin
+        session must never expose a control that silently discards it for a
+        seeded one, with no way back short of signing in with Google again.
+      -->
+      <div v-if="auth.user?.isDemo" class="border-t border-ink-800 px-3 py-3">
         <p class="label mb-2 px-1">Demo · view as</p>
         <div class="grid grid-cols-1 gap-1">
           <button

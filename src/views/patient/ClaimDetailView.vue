@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAsync } from '@/lib/useAsync'
@@ -7,10 +7,11 @@ import * as patientsApi from '@/lib/api/patients'
 import * as verificationApi from '@/lib/api/verification'
 import * as blockchainApi from '@/lib/api/blockchain'
 import * as paymentsApi from '@/lib/api/payments'
-import { claimStatusLabel, date, money, usdc } from '@/lib/format'
+import { claimStatusLabel, date, money } from '@/lib/format'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import ClaimStatusBadge from '@/components/ClaimStatusBadge.vue'
 import TruthScorePanel from '@/components/TruthScorePanel.vue'
+import CoverageRemaining from '@/components/CoverageRemaining.vue'
 import ClaimLifecycleTimeline from '@/components/ClaimLifecycleTimeline.vue'
 import BlockchainRefLink from '@/components/BlockchainRefLink.vue'
 import DetailList from '@/components/ui/DetailList.vue'
@@ -23,20 +24,25 @@ const claimId = route.params.claimId as string
 
 const { data, loading, error, refresh } = useAsync(async () => {
   const claim = await patientsApi.getMyClaimById(auth.patientId!, claimId)
-  const [verification, attestation, policies, payment] = await Promise.all([
+  const [verification, attestation, policies, claims, payment] = await Promise.all([
     verificationApi.getVerification(claimId),
     blockchainApi.getClaimTransaction(claimId),
     patientsApi.getMyPolicies(auth.patientId!),
+    patientsApi.getMyClaims(auth.patientId!),
     claim.paymentId ? paymentsApi.getPaymentById(claim.paymentId) : Promise.resolve(null),
   ])
-  return {
-    claim,
-    verification,
-    attestation,
-    payment,
-    policy: policies.data.find((p) => p.id === claim.policyId) ?? null,
-  }
+  const policy = policies.data.find((p) => p.id === claim.policyId) ?? null
+  const usedOnPolicy = claims.data
+    .filter((c) => c.policyId === claim.policyId)
+    .reduce((sum, c) => sum + (c.amountApproved ?? 0), 0)
+  return { claim, verification, attestation, payment, policy, usedOnPolicy }
 })
+
+// Secondary detail (full fact list, insurer's written decision, lifecycle
+// timeline, on-chain refs, linked record/payment) stays one tap away —
+// what a patient needs at a glance is what was claimed and what their policy
+// still supports, not the full audit trail.
+const showDetails = ref(false)
 
 const facts = computed(() => {
   const claim = data.value?.claim
@@ -112,7 +118,7 @@ const nextStep = computed(() => {
         </div>
       </div>
 
-      <!-- Amounts -->
+      <!-- What was claimed, and what's left on the policy — the two numbers a patient actually needs. -->
       <section class="surface mb-5 p-5">
         <div class="flex flex-wrap items-end gap-x-10 gap-y-5">
           <div>
@@ -130,102 +136,126 @@ const nextStep = computed(() => {
               {{ data.claim.amountApproved === null ? 'Pending' : money(data.claim.amountApproved) }}
             </p>
           </div>
-          <div v-if="data.policy">
-            <p class="label">Your deductible</p>
-            <p class="tnum mt-1 text-2xl font-semibold tracking-tight text-mist-400">
-              {{ money(data.policy.deductible) }}
-            </p>
-          </div>
-          <div v-if="data.payment">
-            <p class="label">Settled on Sui</p>
-            <p class="tnum mt-1 text-2xl font-semibold tracking-tight text-sui-400">
-              {{ usdc(data.payment.amountUsdc) }}
-            </p>
-          </div>
         </div>
 
-        <div class="mt-5 border-t border-ink-700/70 pt-4">
-          <DetailList :items="facts" :columns="3" />
+        <div v-if="data.policy" class="mt-5 border-t border-ink-700/70 pt-4">
+          <CoverageRemaining :used="data.usedOnPolicy" :limit="data.policy.coverageLimit" />
         </div>
       </section>
 
-      <!-- Verification is never separated from the decision it informed. -->
+      <!--
+        Verification is never separated from the decision it informed — score,
+        verdict, reasoning trace and Gonka Request ID always show here. `compact`
+        only drops the technical per-factor weight breakdown, which a patient
+        has no use for and which otherwise makes this the densest section on
+        the page.
+      -->
       <div class="mb-5">
         <TruthScorePanel
           :verification="data.verification"
           :threshold="data.policy?.truthScoreThreshold"
+          compact
         />
       </div>
 
-      <section v-if="data.claim.decisionExplanation" class="surface mb-5 p-5">
-        <h2 class="mb-3 text-sm font-semibold tracking-tight text-mist-100">Why this decision was made</h2>
-        <p class="whitespace-pre-line text-sm leading-relaxed text-mist-300">
-          {{ data.claim.decisionExplanation }}
-        </p>
-      </section>
-
-      <!-- The insurer's decision, always shown alongside the score above -->
-      <section v-if="data.claim.decision" class="surface mb-5 p-5">
-        <div class="flex items-center justify-between gap-3">
-          <h2 class="text-sm font-semibold tracking-tight text-mist-100">Insurer's decision</h2>
-          <span
-            class="rounded-md border px-2 py-1 text-xs font-medium capitalize"
-            :class="
-              data.claim.decision.outcome === 'approved'
-                ? 'border-emerald-500/35 bg-emerald-500/12 text-emerald-300'
-                : data.claim.decision.outcome === 'rejected'
-                  ? 'border-rose-500/35 bg-rose-500/12 text-rose-300'
-                  : 'border-amber-500/35 bg-amber-500/12 text-amber-300'
-            "
-          >
-            {{ data.claim.decision.outcome.replace(/_/g, ' ') }}
-          </span>
-        </div>
-        <p class="mt-3 text-sm leading-relaxed text-mist-300">{{ data.claim.decision.reason }}</p>
-        <p class="mt-3 text-2xs text-mist-500">
-          Decided by {{ data.claim.decision.reviewerName }} ·
-          {{ date(data.claim.decision.decidedAt) }}
-        </p>
-      </section>
-
-      <div class="grid gap-5 lg:grid-cols-[1.35fr_1fr]">
-        <ClaimLifecycleTimeline
-          :events="data.claim.timeline"
-          :current-status="data.claim.status"
+      <!--
+        The on-chain proof of that verification stays with it, always visible
+        — this is a separate transaction from the payment settlement (which
+        has its own such panel on the payment's own page), not a detail to
+        bury behind a toggle.
+      -->
+      <div class="mb-5">
+        <BlockchainRefLink
+          :reference="data.attestation"
+          empty-label="No verification recorded on chain yet — this claim has not been verified, or has no wallet to attest against."
         />
+      </div>
 
-        <div class="space-y-5">
-          <BlockchainRefLink
-            :reference="data.attestation"
-            empty-label="No attestation on chain — this claim has not been verified yet."
+      <!-- Everything else — the full fact list, the insurer's written decision,
+           the lifecycle timeline, linked record/payment — stays one tap away
+           instead of front and centre. -->
+      <button
+        type="button"
+        class="mb-5 flex w-full items-center justify-between rounded-lg border border-ink-700 bg-ink-900/40 px-4 py-3 text-left transition-colors hover:border-ink-600 hover:bg-ink-850/60"
+        :aria-expanded="showDetails"
+        @click="showDetails = !showDetails"
+      >
+        <span class="text-sm font-medium text-mist-200">
+          {{ showDetails ? 'Hide full details' : 'Show full details' }}
+        </span>
+        <span class="text-mist-500" :class="{ 'rotate-180': showDetails }" aria-hidden="true">⌄</span>
+      </button>
+
+      <template v-if="showDetails">
+        <section class="surface mb-5 p-5">
+          <h2 class="mb-3 text-sm font-semibold tracking-tight text-mist-100">Claim details</h2>
+          <DetailList :items="facts" :columns="3" />
+        </section>
+
+        <section v-if="data.claim.decisionExplanation" class="surface mb-5 p-5">
+          <h2 class="mb-3 text-sm font-semibold tracking-tight text-mist-100">Why this decision was made</h2>
+          <p class="whitespace-pre-line text-sm leading-relaxed text-mist-300">
+            {{ data.claim.decisionExplanation }}
+          </p>
+        </section>
+
+        <section v-if="data.claim.decision" class="surface mb-5 p-5">
+          <div class="flex items-center justify-between gap-3">
+            <h2 class="text-sm font-semibold tracking-tight text-mist-100">Insurer's decision</h2>
+            <span
+              class="rounded-md border px-2 py-1 text-xs font-medium capitalize"
+              :class="
+                data.claim.decision.outcome === 'approved'
+                  ? 'border-emerald-500/35 bg-emerald-500/12 text-emerald-300'
+                  : data.claim.decision.outcome === 'rejected'
+                    ? 'border-rose-500/35 bg-rose-500/12 text-rose-300'
+                    : 'border-amber-500/35 bg-amber-500/12 text-amber-300'
+              "
+            >
+              {{ data.claim.decision.outcome.replace(/_/g, ' ') }}
+            </span>
+          </div>
+          <p class="mt-3 text-sm leading-relaxed text-mist-300">{{ data.claim.decision.reason }}</p>
+          <p class="mt-3 text-2xs text-mist-500">
+            Decided by {{ data.claim.decision.reviewerName }} ·
+            {{ date(data.claim.decision.decidedAt) }}
+          </p>
+        </section>
+
+        <div class="grid gap-5 lg:grid-cols-[1.35fr_1fr]">
+          <ClaimLifecycleTimeline
+            :events="data.claim.timeline"
+            :current-status="data.claim.status"
           />
 
-          <RouterLink
-            v-if="data.payment"
-            :to="`/patient/payments/${data.payment.id}`"
-            class="surface block p-4 transition-colors hover:border-ink-600 hover:bg-ink-800/70"
-          >
-            <p class="label">Linked payment</p>
-            <p class="mt-1.5 font-mono text-sm text-mist-200">
-              {{ data.payment.paymentReference }}
-            </p>
-            <p class="mt-1 text-xs text-mist-500">
-              {{ money(data.payment.amount) }} to {{ data.payment.payeeName }} · view settlement →
-            </p>
-          </RouterLink>
+          <div class="space-y-5">
+            <RouterLink
+              v-if="data.payment"
+              :to="`/patient/payments/${data.payment.id}`"
+              class="surface block p-4 transition-colors hover:border-ink-600 hover:bg-ink-800/70"
+            >
+              <p class="label">Linked payment</p>
+              <p class="mt-1.5 font-mono text-sm text-mist-200">
+                {{ data.payment.paymentReference }}
+              </p>
+              <p class="mt-1 text-xs text-mist-500">
+                {{ money(data.payment.amount) }} to {{ data.payment.payeeName }} · view settlement →
+              </p>
+            </RouterLink>
 
-          <RouterLink
-            :to="`/patient/records/${data.claim.recordId}`"
-            class="surface block p-4 transition-colors hover:border-ink-600 hover:bg-ink-800/70"
-          >
-            <p class="label">Source medical record</p>
-            <p class="mt-1.5 text-sm text-mist-200">{{ data.claim.diagnosis }}</p>
-            <p class="mt-1 text-xs text-mist-500">
-              View the record this claim was raised from →
-            </p>
-          </RouterLink>
+            <RouterLink
+              :to="`/patient/records/${data.claim.recordId}`"
+              class="surface block p-4 transition-colors hover:border-ink-600 hover:bg-ink-800/70"
+            >
+              <p class="label">Source medical record</p>
+              <p class="mt-1.5 text-sm text-mist-200">{{ data.claim.diagnosis }}</p>
+              <p class="mt-1 text-xs text-mist-500">
+                View the record this claim was raised from →
+              </p>
+            </RouterLink>
+          </div>
         </div>
-      </div>
+      </template>
     </template>
   </div>
 </template>

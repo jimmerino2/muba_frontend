@@ -28,7 +28,7 @@ const { data, loading, error, refresh } = useAsync(async () => {
 
     <template v-else-if="data">
       <PageHeader
-        :title="`Payment to ${data.payment.payeeName}`"
+        title="Payment receipt"
         :subtitle="`Settlement of claim ${data.payment.claimNumber}`"
         :back="{ to: '/patient/payments', label: 'All payments' }"
       >
@@ -39,7 +39,7 @@ const { data, loading, error, refresh } = useAsync(async () => {
         </template>
       </PageHeader>
 
-      <PaymentDetail :payment="data.payment" :transaction="data.transaction" />
+      <PaymentDetail :payment="data.payment" :transaction="data.transaction" variant="receipt" />
     </template>
   </div>
 </template>

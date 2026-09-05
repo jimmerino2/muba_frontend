@@ -35,7 +35,9 @@ const ADDRESSES: Record<Role, string> = {
 }
 
 function mintSession(role: Role): Session {
-  const user = findUserByRole(role)
+  // Mock mode has no real zkLogin behind it at all — every session here is
+  // inherently a demo one, so the role switcher stays freely usable.
+  const user: User = { ...findUserByRole(role), isDemo: true }
   return {
     user,
     token: `mock.jwt.${role}.${Date.now().toString(36)}`,
