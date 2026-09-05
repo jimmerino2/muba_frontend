@@ -1,4 +1,4 @@
-import type { Claim, TruthBand, VerificationFactor, VerificationResult } from '@/lib/types'
+import type { Claim, ModelComparison, TruthBand, VerificationFactor, VerificationResult } from '@/lib/types'
 import { ago, now } from './_time'
 import { claims } from './claims'
 import { policies } from './policies'
@@ -282,6 +282,7 @@ export function generateVerification(
   documentCount: number,
   truthScoreThreshold: number,
   icd10Code?: string,
+  model?: string,
 ): VerificationResult {
   const factors: VerificationFactor[] = []
 
@@ -331,7 +332,7 @@ export function generateVerification(
   // A small deterministic spread keyed to the claim, standing in for the residual
   // signals a real verifier would weigh (cost benchmarks, provider history, prior
   // episodes) — without it every generated claim would land on the same number.
-  const seed = `${claim.diagnosis}|${claim.treatmentDescription}|${claim.amountRequested}`
+  const seed = `${claim.diagnosis}|${claim.treatmentDescription}|${claim.amountRequested}|${model ?? ''}`
   let h = 0
   for (let i = 0; i < seed.length; i += 1) h = (h * 31 + seed.charCodeAt(i)) | 0
   const jitter = (Math.abs(h) % 13) - 6
@@ -376,11 +377,37 @@ export function generateVerification(
     verdict,
     reasoning,
     factors,
-    model: TRUTH_MODEL,
+    model: model ?? TRUTH_MODEL,
     router: 'Gonka Router',
     latencyMs: 1_600 + Math.floor(Math.random() * 2_600),
     threshold: truthScoreThreshold,
     passesThreshold: score >= truthScoreThreshold,
     verifiedAt: now(),
+  }
+}
+
+/**
+ * A comparison-model "second opinion" for the mock layer — same generator as
+ * the primary verification, just re-run under a different model id so the
+ * comparison panel has something genuinely different to show (a different
+ * score, verdict and reasoning), never a factor in the claim's own decision.
+ */
+export function generateComparison(
+  claim: Claim,
+  documentCount: number,
+  truthScoreThreshold: number,
+  icd10Code: string | undefined,
+  model: string,
+): ModelComparison {
+  const result = generateVerification(claim, documentCount, truthScoreThreshold, icd10Code, model)
+  return {
+    model,
+    truthScore: result.truthScore,
+    band: result.band,
+    verdict: result.verdict,
+    reasoning: result.reasoning,
+    factors: result.factors,
+    requestId: result.requestId,
+    latencyMs: result.latencyMs,
   }
 }

@@ -289,7 +289,26 @@ export interface VerificationResult {
   threshold: number
   passesThreshold: boolean
   verifiedAt: string
+  /** Other models' takes on this same claim, requested purely for
+   * side-by-side comparison — never a factor in the routing decision, which
+   * is always driven by `model` above alone. */
+  comparisons?: ModelComparison[]
 }
+
+/** One additional model's opinion on the same claim, run for comparison only. */
+export type ModelComparison =
+  | {
+      model: string
+      truthScore: number
+      band: TruthBand
+      verdict: string
+      reasoning: string
+      factors: VerificationFactor[]
+      requestId: string
+      latencyMs: number
+      error?: undefined
+    }
+  | { model: string; error: string }
 
 /* --------------------------------------------------------------- payments */
 

@@ -12,6 +12,7 @@ import PageHeader from '@/components/ui/PageHeader.vue'
 import ClaimStatusBadge from '@/components/ClaimStatusBadge.vue'
 import ClaimFinancialSummary from '@/components/ClaimFinancialSummary.vue'
 import TruthScorePanel from '@/components/TruthScorePanel.vue'
+import ModelComparisonPanel from '@/components/ModelComparisonPanel.vue'
 import CoverageRemaining from '@/components/CoverageRemaining.vue'
 import ClaimLifecycleTimeline from '@/components/ClaimLifecycleTimeline.vue'
 import BlockchainRefLink from '@/components/BlockchainRefLink.vue'
@@ -135,12 +136,13 @@ const nextStep = computed(() => {
         has no use for and which otherwise makes this the densest section on
         the page.
       -->
-      <div class="mb-5">
+      <div class="mb-5 space-y-5">
         <TruthScorePanel
           :verification="data.verification"
           :threshold="data.policy?.truthScoreThreshold"
           compact
         />
+        <ModelComparisonPanel :verification="data.verification" />
       </div>
 
       <!--

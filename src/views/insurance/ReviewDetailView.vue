@@ -10,6 +10,7 @@ import { date, money } from '@/lib/format'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import ClaimStatusBadge from '@/components/ClaimStatusBadge.vue'
 import TruthScorePanel from '@/components/TruthScorePanel.vue'
+import ModelComparisonPanel from '@/components/ModelComparisonPanel.vue'
 import ClaimLifecycleTimeline from '@/components/ClaimLifecycleTimeline.vue'
 import BlockchainRefLink from '@/components/BlockchainRefLink.vue'
 import DetailList from '@/components/ui/DetailList.vue'
@@ -172,6 +173,8 @@ const context = computed(() => {
             :verification="data.verification"
             :threshold="data.policy.truthScoreThreshold"
           />
+
+          <ModelComparisonPanel :verification="data.verification" />
 
           <section class="surface p-5">
             <h2 class="mb-4 text-sm font-semibold tracking-tight text-mist-100">

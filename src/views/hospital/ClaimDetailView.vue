@@ -14,6 +14,7 @@ import PageHeader from '@/components/ui/PageHeader.vue'
 import ClaimStatusBadge from '@/components/ClaimStatusBadge.vue'
 import ClaimFinancialSummary from '@/components/ClaimFinancialSummary.vue'
 import TruthScorePanel from '@/components/TruthScorePanel.vue'
+import ModelComparisonPanel from '@/components/ModelComparisonPanel.vue'
 import VerificationSteps from '@/components/VerificationSteps.vue'
 import ClaimLifecycleTimeline from '@/components/ClaimLifecycleTimeline.vue'
 import BlockchainRefLink from '@/components/BlockchainRefLink.vue'
@@ -153,11 +154,12 @@ async function runVerification() {
         <DetailList :items="facts" :columns="3" />
       </section>
 
-      <div class="mb-5">
+      <div class="mb-5 space-y-5">
         <TruthScorePanel
           :verification="data.verification"
           :threshold="policy?.truthScoreThreshold"
         />
+        <ModelComparisonPanel :verification="data.verification" />
       </div>
 
       <section v-if="data.claim.decisionExplanation" class="surface mb-5 p-5">

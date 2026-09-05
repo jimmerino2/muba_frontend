@@ -72,17 +72,30 @@ export class ClaimRejectedBeforeVerification extends ApiError {
 }
 
 /** `model` optionally overrides the backend's default Gonka Router model
- * (`GONKA_MODEL`) for this one verification — see `lib/api/gonka.ts`
- * listModels() for what's actually available to offer. */
-export async function verifyClaim(claimId: string, model?: string): Promise<VerifyOutcome> {
+ * (`GONKA_MODEL`) for this one verification; `comparisonModels` runs
+ * additional models against the same claim purely for side-by-side
+ * comparison — neither ever changes the routing decision, which is always
+ * driven by `model` alone. See `lib/api/gonka.ts` listModels() for what's
+ * actually available to offer. */
+export async function verifyClaim(
+  claimId: string,
+  model?: string,
+  comparisonModels?: string[],
+): Promise<VerifyOutcome> {
   // The Gonka call this triggers has no timeout of its own and is documented
   // as sometimes running 60s+ — bound it client-side so a hung request
   // surfaces a clear, retryable error instead of leaving the caller's UI
   // waiting forever with no feedback (see useVerificationRun.ts and every
-  // view that renders VerificationSteps while this is in flight).
+  // view that renders VerificationSteps while this is in flight). Running
+  // comparison models in the same call adds more of the same kind of wait,
+  // not a new failure mode, so the timeout is left as-is.
+  const body: Record<string, unknown> = {}
+  if (model) body.model = model
+  if (comparisonModels && comparisonModels.length > 0) body.comparisonModels = comparisonModels
+
   const outcome = await http<WireVerifyOutcome>(`/api/verification/claims/${claimId}`, {
     method: 'POST',
-    body: model ? { model } : undefined,
+    body: Object.keys(body).length > 0 ? body : undefined,
     timeoutMs: 90_000,
   })
 

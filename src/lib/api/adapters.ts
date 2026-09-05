@@ -8,6 +8,7 @@ import type {
   ClaimLineItem,
   ClaimStatus,
   MedicalRecord,
+  ModelComparison,
   Organization,
   Patient,
   Payment,
@@ -26,6 +27,7 @@ import type {
   WireClaimStatus,
   WireGonkaRequest,
   WireMedicalRecord,
+  WireModelComparison,
   WireOrganization,
   WirePatient,
   WirePayment,
@@ -542,6 +544,21 @@ export function toVerificationResult(request: WireGonkaRequest): VerificationRes
     threshold: request.threshold,
     passesThreshold: request.passesThreshold,
     verifiedAt: request.completedAt,
+    ...(request.comparisons ? { comparisons: request.comparisons.map(toModelComparison) } : {}),
+  }
+}
+
+function toModelComparison(comparison: WireModelComparison): ModelComparison {
+  if (comparison.error !== undefined) return { model: comparison.model, error: comparison.error }
+  return {
+    model: comparison.model,
+    truthScore: comparison.truthScore,
+    band: comparison.band,
+    verdict: comparison.verdict,
+    reasoning: comparison.reasoning,
+    factors: comparison.factors,
+    requestId: comparison.gonkaRequestId,
+    latencyMs: comparison.latencyMs,
   }
 }
 

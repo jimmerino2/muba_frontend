@@ -321,7 +321,28 @@ export interface WireGonkaRequest {
   attestationDigest: string | null
   createdAt: string
   completedAt: string
+  /** Other models' takes on this same claim, present only when the caller
+   * asked for a comparison (see live/verification.ts verifyClaim). Never a
+   * factor in `decision` above — comparison, not a second vote. */
+  comparisons?: WireModelComparison[]
 }
+
+/** One additional model's take on the same claim. `error` is set (with every
+ * other field absent) when that model's own call failed — one model failing
+ * never fails the verification driving the actual routing decision. */
+export type WireModelComparison =
+  | {
+      model: string
+      truthScore: number
+      band: 'high' | 'medium' | 'low'
+      verdict: string
+      reasoning: string
+      factors: { label: string; detail: string; impact: 'positive' | 'neutral' | 'negative'; weight: number }[]
+      gonkaRequestId: string
+      latencyMs: number
+      error?: undefined
+    }
+  | { model: string; error: string }
 
 export interface WireVerifyOutcome {
   claim: WireClaim

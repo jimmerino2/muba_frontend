@@ -1,5 +1,5 @@
 import type { VerificationResult } from '@/lib/types'
-import { generateVerification } from '@/lib/mock-data/verification'
+import { generateComparison, generateVerification } from '@/lib/mock-data/verification'
 import { badRequest, respond } from '../client'
 import {
   appendEvent,
@@ -47,7 +47,11 @@ export interface VerifyOutcome {
  * Deliberately slower than a data read — this is a model call, and the UI shows a
  * staged progress reveal against it rather than a generic spinner.
  */
-export async function verifyClaim(claimId: string, model?: string): Promise<VerifyOutcome> {
+export async function verifyClaim(
+  claimId: string,
+  model?: string,
+  comparisonModels?: string[],
+): Promise<VerifyOutcome> {
   const claim = claimRef(claimId)
 
   if (claim.status === 'created') {
@@ -65,6 +69,17 @@ export async function verifyClaim(claimId: string, model?: string): Promise<Veri
   // different model — reflect the caller's choice on the result so the UI
   // still shows what was picked, same as the live path would.
   if (model) verification.model = model
+
+  // Comparison models are purely informational, same as the live backend —
+  // generated here (rather than left empty) so the mock layer exercises the
+  // same comparison panel a live Gonka Router run would.
+  const uniqueComparisonModels = [...new Set(comparisonModels ?? [])].filter((m) => m !== verification.model)
+  if (uniqueComparisonModels.length > 0) {
+    verification.comparisons = uniqueComparisonModels.map((m) =>
+      generateComparison(claim, record.documents.length, policy.truthScoreThreshold, record.icd10Code, m),
+    )
+  }
+
   storeVerification(verification)
 
   claim.status = 'verified'

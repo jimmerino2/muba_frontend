@@ -11,6 +11,7 @@ import * as gonkaApi from '@/lib/api/gonka'
 import { money } from '@/lib/format'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import TruthScorePanel from '@/components/TruthScorePanel.vue'
+import ModelComparisonPanel from '@/components/ModelComparisonPanel.vue'
 import VerificationSteps from '@/components/VerificationSteps.vue'
 import RoutingOutcomeCard from '@/components/RoutingOutcomeCard.vue'
 import SkeletonBlock from '@/components/ui/SkeletonBlock.vue'
@@ -27,11 +28,26 @@ const { data, loading, error, refresh } = useAsync(async () => {
   return { record, policies: detail.policies }
 })
 
-const form = ref({ policyId: '', treatmentDescription: '', amountRequested: 0, model: '' })
+const form = ref({ policyId: '', treatmentDescription: '', amountRequested: 0, model: '', comparisonModels: [] as string[] })
 
 /** Empty string means "use the backend's default model" — not sent as an
  * override at all, see submit() below. */
 const { data: gonkaModels } = useAsync(() => gonkaApi.listModels())
+
+/** Other models offered for comparison exclude whichever one is already
+ * doing the actual verification — comparing a model against itself is noise,
+ * not a second opinion. */
+const comparableModels = computed(() =>
+  (gonkaModels.value?.models ?? []).filter((m) => m !== (form.value.model || gonkaModels.value?.default)),
+)
+
+function toggleComparisonModel(model: string, checked: boolean) {
+  if (checked) {
+    if (!form.value.comparisonModels.includes(model)) form.value.comparisonModels.push(model)
+  } else {
+    form.value.comparisonModels = form.value.comparisonModels.filter((m) => m !== model)
+  }
+}
 
 const FACILITY_TYPES: { value: NonNullable<ClaimClauseContextInput['facilityType']>; label: string }[] = [
   { value: 'PRIVATE_HOSPITAL', label: 'Private hospital' },
@@ -150,7 +166,7 @@ async function submit(alsoSubmitToInsurer: boolean) {
   }
 
   phase.value = 'running'
-  const outcome = await verify.run(claim.id, form.value.model || undefined)
+  const outcome = await verify.run(claim.id, form.value.model || undefined, form.value.comparisonModels)
   if (!outcome) {
     submitError.value = verify.error.value
     // The claim exists and is submitted; only the verification leg failed.
@@ -257,8 +273,31 @@ const canSubmit = computed(
                 <option v-for="m in gonkaModels?.models ?? []" :key="m" :value="m">{{ m }}</option>
               </select>
               <p class="mt-1.5 text-xs text-mist-500">
-                The Gonka Router model that scores this claim's plausibility. Leave on the platform
-                default unless you have a reason to compare another model's verdict.
+                The Gonka Router model that scores this claim's plausibility and drives the routing
+                decision. Leave on the platform default unless you have a reason to change it.
+              </p>
+            </div>
+
+            <div v-if="comparableModels.length > 0">
+              <p class="label mb-1.5">Compare against other models (optional)</p>
+              <div class="flex flex-wrap gap-x-5 gap-y-2">
+                <label
+                  v-for="m in comparableModels"
+                  :key="m"
+                  class="flex cursor-pointer items-center gap-2 text-sm text-mist-300"
+                >
+                  <input
+                    type="checkbox"
+                    class="h-4 w-4 rounded border-ink-600 bg-ink-800 text-gonka-500 focus:ring-gonka-500"
+                    :checked="form.comparisonModels.includes(m)"
+                    @change="toggleComparisonModel(m, ($event.target as HTMLInputElement).checked)"
+                  />
+                  {{ m }}
+                </label>
+              </div>
+              <p class="mt-1.5 text-xs text-mist-500">
+                Each checked model also scores this claim, shown side by side for reference — it never
+                changes the routing decision, which is always the model selected above.
               </p>
             </div>
           </div>
@@ -407,6 +446,8 @@ const canSubmit = computed(
           :threshold="verify.outcome.value.truthScoreThreshold"
           animate
         />
+
+        <ModelComparisonPanel :verification="verify.outcome.value.verification" />
 
         <div class="flex flex-wrap gap-3">
           <RouterLink :to="`/hospital/claims/${createdClaim.id}`" class="btn-primary">
