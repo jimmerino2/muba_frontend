@@ -114,7 +114,7 @@ const showDevTools = (import.meta.env.VITE_ENABLE_DEV_TOOLS ?? 'true') !== 'fals
             Claims awaiting verification or a human decision, oldest activity last
           </p>
         </div>
-        <RouterLink to="/insurance/review" class="text-xs text-mist-500 hover:text-gonka-400">
+        <RouterLink to="/insurance/review" class="text-xs text-mist-500 hover:text-brand-400">
           Open review →
         </RouterLink>
       </header>

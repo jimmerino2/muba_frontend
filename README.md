@@ -1,4 +1,4 @@
-# WayFare — Frontend
+# RICE — Frontend
 
 A shared coordination layer for medical insurance claims, built for MUBA Hacks 2026.
 Three roles — **patient**, **hospital/TPA**, **insurer** — work one claim lifecycle, with

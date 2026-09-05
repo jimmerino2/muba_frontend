@@ -103,7 +103,7 @@ const { data, loading, error, refresh } = useAsync(() =>
       <section class="surface overflow-hidden">
         <header class="flex items-center justify-between border-b border-ink-700/70 px-5 py-3.5">
           <h2 class="text-sm font-semibold tracking-tight text-mist-100">Recent claim activity</h2>
-          <RouterLink to="/hospital/claims" class="text-xs text-mist-500 hover:text-gonka-400">
+          <RouterLink to="/hospital/claims" class="text-xs text-mist-500 hover:text-brand-400">
             View all →
           </RouterLink>
         </header>
@@ -138,7 +138,7 @@ const { data, loading, error, refresh } = useAsync(() =>
       <section class="surface overflow-hidden">
         <header class="flex items-center justify-between border-b border-ink-700/70 px-5 py-3.5">
           <h2 class="text-sm font-semibold tracking-tight text-mist-100">Recently filed records</h2>
-          <RouterLink to="/hospital/records" class="text-xs text-mist-500 hover:text-gonka-400">
+          <RouterLink to="/hospital/records" class="text-xs text-mist-500 hover:text-brand-400">
             View all →
           </RouterLink>
         </header>

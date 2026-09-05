@@ -28,6 +28,17 @@ export default {
           200: 'rgb(var(--mist-200) / <alpha-value>)',
           100: 'rgb(var(--mist-100) / <alpha-value>)',
         },
+        // RICE brand — navy blue, from the logo. General UI chrome: primary
+        // buttons, links, focus rings, selection. 500/600 stay literal (the
+        // vivid button/accent tier, meant to read the same in both themes);
+        // 300/400/950 are text/tint tiers tuned per theme for contrast.
+        brand: {
+          300: 'rgb(var(--brand-300) / <alpha-value>)',
+          400: 'rgb(var(--brand-400) / <alpha-value>)',
+          500: '#3E7CB8',
+          600: '#2C5F91',
+          950: 'rgb(var(--brand-950) / <alpha-value>)',
+        },
         // Gonka / verification signal — teal. Used ONLY for truth-score surfaces.
         // 500/600 stay literal (they're the vivid button/accent tier, meant to
         // read the same in both themes); 300/400/950 are text/tint tiers tuned
@@ -67,7 +78,7 @@ export default {
       },
       boxShadow: {
         lift: '0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6)',
-        glow: '0 0 0 1px rgba(34,201,166,.25), 0 0 32px -8px rgba(34,201,166,.35)',
+        glow: '0 0 0 1px rgba(62,124,184,.25), 0 0 32px -8px rgba(62,124,184,.35)',
       },
       keyframes: {
         'fade-up': { '0%': { opacity: '0', transform: 'translateY(6px)' }, '100%': { opacity: '1', transform: 'none' } },

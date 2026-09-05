@@ -89,7 +89,7 @@ export function roleFor(actorType: WireSession['identity']['actorType']): Role {
 function nameFor(account: Pick<WireAccount, 'displayName' | 'email'>): string {
   if (account.displayName) return account.displayName
   if (account.email) return account.email.split('@')[0]!
-  return 'WayFare user'
+  return 'RICE user'
 }
 
 function initialsFor(name: string | null | undefined): string {

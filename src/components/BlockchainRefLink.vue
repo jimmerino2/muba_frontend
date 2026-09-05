@@ -108,7 +108,7 @@ withDefaults(
       <div v-if="reference.sponsored" class="rounded-lg border border-ink-700 bg-ink-900/50 p-3.5">
         <p class="text-xs font-medium text-mist-200">Gas sponsored</p>
         <p class="mt-1 text-xs leading-relaxed text-mist-500">
-          The payer signed this transaction without holding SUI — gas was paid by the WayFare
+          The payer signed this transaction without holding SUI — gas was paid by the RICE
           sponsor address, so neither the insurer nor the provider needs to manage a gas balance.
         </p>
         <div class="mt-2.5 flex flex-wrap gap-2">

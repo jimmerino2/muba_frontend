@@ -75,8 +75,8 @@ const ordered = computed(() =>
                   ? 'border-ink-700 bg-ink-850 text-ink-600'
                   : reached[i]
                     ? i === currentStageIndex
-                      ? 'border-gonka-500 bg-gonka-500 text-ink-950'
-                      : 'border-gonka-600/50 bg-gonka-950 text-gonka-400'
+                      ? 'border-brand-500 bg-brand-500 text-ink-950'
+                      : 'border-brand-600/50 bg-brand-950 text-brand-400'
                     : 'border-ink-700 bg-ink-850 text-mist-500',
               ]"
             >
@@ -92,7 +92,7 @@ const ordered = computed(() =>
           <div
             v-if="i < STAGES.length - 1"
             class="mx-2 mb-5 h-px flex-1"
-            :class="reached[i + 1] ? 'bg-gonka-600/50' : 'bg-ink-700'"
+            :class="reached[i + 1] ? 'bg-brand-600/50' : 'bg-ink-700'"
             aria-hidden="true"
           />
         </li>

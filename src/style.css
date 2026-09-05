@@ -32,6 +32,10 @@
     --mist-200: 210 218 232;
     --mist-100: 237 241 248;
 
+    --brand-300: 143 193 232;
+    --brand-400: 95 163 214;
+    --brand-950: 7 27 46;
+
     --gonka-300: 125 237 212;
     --gonka-400: 79 227 193;
     --gonka-950: 6 43 38;
@@ -65,6 +69,10 @@
       --mist-300: 51 65 85;
       --mist-200: 30 41 59;
       --mist-100: 15 23 42;
+
+      --brand-300: 30 78 120;
+      --brand-400: 21 94 145;
+      --brand-950: 234 243 250;
 
       --gonka-300: 17 94 89;
       --gonka-400: 15 118 110;
@@ -100,6 +108,10 @@
     --mist-200: 30 41 59;
     --mist-100: 15 23 42;
 
+    --brand-300: 30 78 120;
+    --brand-400: 21 94 145;
+    --brand-950: 234 243 250;
+
     --gonka-300: 17 94 89;
     --gonka-400: 15 118 110;
     --gonka-950: 236 253 249;
@@ -126,7 +138,7 @@
   body {
     @apply bg-ink-900 text-mist-200 font-sans antialiased;
     background-image:
-      radial-gradient(900px 500px at 12% -8%, rgba(34, 201, 166, 0.06), transparent 60%),
+      radial-gradient(900px 500px at 12% -8%, rgba(62, 124, 184, 0.07), transparent 60%),
       radial-gradient(800px 460px at 92% 0%, rgba(124, 138, 255, 0.06), transparent 62%);
     background-attachment: fixed;
   }
@@ -137,11 +149,11 @@
   }
 
   ::selection {
-    @apply bg-gonka-500/25;
+    @apply bg-brand-500/25;
   }
 
   *:focus-visible {
-    @apply outline-none ring-2 ring-gonka-500/70 ring-offset-2 ring-offset-ink-900 rounded-[6px];
+    @apply outline-none ring-2 ring-brand-500/70 ring-offset-2 ring-offset-ink-900 rounded-[6px];
   }
 
   ::-webkit-scrollbar {
@@ -173,7 +185,7 @@
            transition-colors duration-150 disabled:opacity-40 disabled:pointer-events-none whitespace-nowrap;
   }
   .btn-primary {
-    @apply btn bg-gonka-500 text-ink-950 hover:bg-gonka-400;
+    @apply btn bg-brand-500 text-ink-950 hover:bg-brand-400;
   }
   .btn-ghost {
     @apply btn border border-ink-700 text-mist-300 hover:bg-ink-800 hover:text-mist-100;
@@ -187,10 +199,10 @@
 
   .field {
     @apply w-full rounded-lg bg-ink-900/70 border border-ink-700 px-3 py-2 text-sm text-mist-100
-           placeholder:text-mist-500/70 transition-colors focus:border-gonka-600;
+           placeholder:text-mist-500/70 transition-colors focus:border-brand-600;
   }
 
   .link {
-    @apply text-gonka-400 hover:text-gonka-300 underline decoration-gonka-600/40 underline-offset-2;
+    @apply text-brand-400 hover:text-brand-300 underline decoration-brand-600/40 underline-offset-2;
   }
 }
