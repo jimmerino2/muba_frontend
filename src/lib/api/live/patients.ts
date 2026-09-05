@@ -177,11 +177,16 @@ export async function getMyPolicies(_patientId: string): Promise<Paginated<Polic
   const rows = await Promise.all(
     (wire ?? []).map(async (policy) => {
       cache.policies.put(policy.id, policy)
-      const [insurer, holder] = await Promise.all([
+      const [insurer, holder, tpa] = await Promise.all([
         organizationName(policy.insuranceOrganizationId),
         patientName(policy.patientRef),
+        policy.tpaOrganizationId ? organizationName(policy.tpaOrganizationId) : Promise.resolve(null),
       ])
-      return toPolicy(policy, { insurerName: insurer, holderName: holder }, TRUTH_SCORE_THRESHOLD)
+      return toPolicy(
+        policy,
+        { insurerName: insurer, holderName: holder, tpaName: tpa },
+        TRUTH_SCORE_THRESHOLD,
+      )
     }),
   )
   return paginate(rows)

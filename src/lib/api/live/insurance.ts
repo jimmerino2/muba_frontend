@@ -192,13 +192,16 @@ export async function getClaimById(
   if (!wirePolicy) throw notFound('Policy', wire.policyId)
 
   const wirePatient = await cache.patients.get(wire.patientRef)
-  const insurerName = await organizationName(wirePolicy.insuranceOrganizationId)
+  const [insurerName, tpaName] = await Promise.all([
+    organizationName(wirePolicy.insuranceOrganizationId),
+    wirePolicy.tpaOrganizationId ? organizationName(wirePolicy.tpaOrganizationId) : Promise.resolve(null),
+  ])
 
   return {
     claim,
     policy: toPolicy(
       wirePolicy,
-      { insurerName, holderName: wirePatient?.name ?? claim.patientName },
+      { insurerName, holderName: wirePatient?.name ?? claim.patientName, tpaName },
       TRUTH_SCORE_THRESHOLD,
     ),
     patient: wirePatient ? toPatient(wirePatient) : null,
@@ -319,11 +322,12 @@ export async function getMembers(query: ListQuery = {}): Promise<Paginated<Patie
 
 async function hydratePolicy(policy: WirePolicy): Promise<Policy> {
   cache.policies.put(policy.id, policy)
-  const [insurer, holder] = await Promise.all([
+  const [insurer, holder, tpa] = await Promise.all([
     organizationName(policy.insuranceOrganizationId),
     patientName(policy.patientRef),
+    policy.tpaOrganizationId ? organizationName(policy.tpaOrganizationId) : Promise.resolve(null),
   ])
-  return toPolicy(policy, { insurerName: insurer, holderName: holder }, TRUTH_SCORE_THRESHOLD)
+  return toPolicy(policy, { insurerName: insurer, holderName: holder, tpaName: tpa }, TRUTH_SCORE_THRESHOLD)
 }
 
 export async function getPolicies(
@@ -348,7 +352,7 @@ export async function getPolicyById(insurerId: string, policyId: string): Promis
 
 export type PolicyPayload = Omit<
   Policy,
-  'id' | 'insurerId' | 'insurerName' | 'holderName' | 'currency'
+  'id' | 'insurerId' | 'insurerName' | 'holderName' | 'tpaName' | 'currency'
 >
 
 /**
@@ -388,10 +392,20 @@ export async function createPolicy(
       maximumCoverage: payload.coverageLimit,
       deductible: payload.deductible,
       requiresReviewAbove: payload.autoApproveLimit,
+      tpaOrganizationId: payload.tpaOrganizationId,
       tpaApprovalLimit: payload.tpaApprovalLimit,
     },
   })
   return hydratePolicy(policy)
+}
+
+/** `GET /api/identity/organizations?type=TPA` — the picker on the New Policy
+ * form needs to know which TPAs exist before an insurer can delegate to one. */
+export async function listTpaOrganizations(): Promise<{ id: string; name: string }[]> {
+  const orgs = await http<{ id: string; name: string }[]>('/api/identity/organizations', {
+    query: { type: 'TPA' },
+  })
+  return orgs ?? []
 }
 
 /**

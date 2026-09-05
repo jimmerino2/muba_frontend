@@ -35,6 +35,7 @@ const form = ref({
   status: 'active' as PolicyStatus,
   coverageLimit: 150_000,
   autoApproveLimit: 15_000,
+  tpaOrganizationId: '' as string,
   tpaApprovalLimit: 10_000 as number | null,
   truthScoreThreshold: 85,
   deductible: 500,
@@ -44,6 +45,7 @@ const form = ref({
 })
 
 const { data: members, loading: loadingMembers } = useAsync(() => insuranceApi.getMembers())
+const { data: tpaOrgs, loading: loadingTpaOrgs } = useAsync(() => insuranceApi.listTpaOrganizations())
 
 const { data: existing, loading: loadingPolicy } = useAsync(
   () =>
@@ -62,6 +64,7 @@ watch(existing, (policy) => {
     status: policy.status,
     coverageLimit: policy.coverageLimit,
     autoApproveLimit: policy.autoApproveLimit,
+    tpaOrganizationId: policy.tpaOrganizationId ?? '',
     tpaApprovalLimit: policy.tpaApprovalLimit,
     truthScoreThreshold: policy.truthScoreThreshold,
     deductible: policy.deductible,
@@ -71,7 +74,7 @@ watch(existing, (policy) => {
   }
 })
 
-const loading = computed(() => loadingMembers.value || loadingPolicy.value)
+const loading = computed(() => loadingMembers.value || loadingPolicy.value || loadingTpaOrgs.value)
 
 const limitConflict = computed(
   () => Number(form.value.autoApproveLimit) > Number(form.value.coverageLimit),
@@ -83,6 +86,13 @@ const tpaLimitConflict = computed(
     Number(form.value.tpaApprovalLimit) > Number(form.value.coverageLimit),
 )
 
+/** A TPA approval limit only means something once a TPA is actually
+ * delegated — a limit with nobody to hold it is a contradiction, not just an
+ * unusual policy. */
+const tpaWithoutDelegateConflict = computed(
+  () => form.value.tpaApprovalLimit !== null && !form.value.tpaOrganizationId,
+)
+
 const canSubmit = computed(
   () =>
     form.value.name.trim() &&
@@ -90,6 +100,7 @@ const canSubmit = computed(
     form.value.holderPatientId &&
     !limitConflict.value &&
     !tpaLimitConflict.value &&
+    !tpaWithoutDelegateConflict.value &&
     Number(form.value.truthScoreThreshold) >= 0 &&
     Number(form.value.truthScoreThreshold) <= 100,
 )
@@ -103,6 +114,7 @@ const save = useAction(async () => {
     status: form.value.status,
     coverageLimit: Number(form.value.coverageLimit),
     autoApproveLimit: Number(form.value.autoApproveLimit),
+    tpaOrganizationId: form.value.tpaOrganizationId || null,
     tpaApprovalLimit:
       form.value.tpaApprovalLimit === null ? null : Number(form.value.tpaApprovalLimit),
     truthScoreThreshold: Number(form.value.truthScoreThreshold),
@@ -254,6 +266,19 @@ async function submit() {
 
         <div class="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
+            <label for="tpa-org" class="label mb-1.5 block">Administering TPA</label>
+            <select id="tpa-org" v-model="form.tpaOrganizationId" class="field">
+              <option value="">None — insurer decides directly</option>
+              <option v-for="org in tpaOrgs ?? []" :key="org.id" :value="org.id">
+                {{ org.name }}
+              </option>
+            </select>
+            <p class="mt-1.5 text-xs text-mist-500">
+              The TPA delegated to decide claims on this policy, up to the approval limit below.
+            </p>
+          </div>
+
+          <div>
             <label for="auto-limit" class="label mb-1.5 block">Auto-approval limit</label>
             <input
               id="auto-limit"
@@ -282,10 +307,13 @@ async function submit() {
               min="0"
               step="100"
               class="field tnum"
-              :class="tpaLimitConflict ? 'border-rose-500/60' : ''"
+              :class="tpaLimitConflict || tpaWithoutDelegateConflict ? 'border-rose-500/60' : ''"
             />
             <p v-if="tpaLimitConflict" class="mt-1.5 text-xs text-rose-300">
               Cannot exceed the annual coverage limit of {{ money(Number(form.coverageLimit)) }}.
+            </p>
+            <p v-else-if="tpaWithoutDelegateConflict" class="mt-1.5 text-xs text-rose-300">
+              Select an administering TPA above, or clear this limit.
             </p>
             <p v-else class="mt-1.5 text-xs text-mist-500">
               The administering TPA may decide claims at or below this amount alone; above it, the

@@ -1,6 +1,10 @@
 import type { Policy } from '@/lib/types'
 import { ago, ahead } from './_time'
 
+/** Every seeded policy delegates to the one TPA `mock-data/claims.ts` also
+ * uses (`CARECALL` there) — keeps the mock fixtures' org ids consistent. */
+const CARECALL_TPA = { tpaOrganizationId: 'org_carecall_tpa', tpaName: 'CareCall TPA Services — Appointed by Manulife' }
+
 /**
  * `autoApproveLimit` and `truthScoreThreshold` together decide routing: a claim
  * skips human review only when it is at or under the limit AND its Gonka Truth
@@ -36,6 +40,7 @@ export const policies: Policy[] = [
     status: 'active',
     coverageLimit: 150_000,
     autoApproveLimit: 15_000,
+    ...CARECALL_TPA,
     tpaApprovalLimit: 10_000,
     truthScoreThreshold: 85,
     deductible: 500,
@@ -56,6 +61,7 @@ export const policies: Policy[] = [
     status: 'active',
     coverageLimit: 250_000,
     autoApproveLimit: 25_000,
+    ...CARECALL_TPA,
     tpaApprovalLimit: 20_000,
     truthScoreThreshold: 82,
     deductible: 500,
@@ -76,6 +82,7 @@ export const policies: Policy[] = [
     status: 'active',
     coverageLimit: 150_000,
     autoApproveLimit: 5_000,
+    ...CARECALL_TPA,
     tpaApprovalLimit: 4_000,
     truthScoreThreshold: 88,
     deductible: 500,
@@ -96,6 +103,7 @@ export const policies: Policy[] = [
     status: 'active',
     coverageLimit: 250_000,
     autoApproveLimit: 30_000,
+    ...CARECALL_TPA,
     tpaApprovalLimit: 20_000,
     truthScoreThreshold: 90,
     deductible: 500,
@@ -116,6 +124,7 @@ export const policies: Policy[] = [
     status: 'active',
     coverageLimit: 150_000,
     autoApproveLimit: 12_000,
+    ...CARECALL_TPA,
     tpaApprovalLimit: 8_000,
     truthScoreThreshold: 85,
     deductible: 500,

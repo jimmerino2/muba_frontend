@@ -23,4 +23,5 @@ export const {
   getPolicyById,
   createPolicy,
   updatePolicy,
+  listTpaOrganizations,
 } = impl

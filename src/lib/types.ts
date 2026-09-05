@@ -75,6 +75,11 @@ export interface Policy {
   coverageLimit: number
   /** Claims at or below this amount may auto-approve when the Truth Score clears the threshold. */
   autoApproveLimit: number
+  /** The TPA delegated to decide claims on this policy alone, up to
+   * `tpaApprovalLimit`; null when the insurer administers it directly. */
+  tpaOrganizationId: string | null
+  /** Display name for `tpaOrganizationId`; null when there is no delegation. */
+  tpaName: string | null
   /** The insurer-set ceiling up to which the administering TPA may decide a
    * claim alone; above it (or when null — no TPA delegation) the insurer
    * decides. Distinct from `autoApproveLimit`, which gates automated

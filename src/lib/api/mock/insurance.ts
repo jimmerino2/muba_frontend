@@ -9,7 +9,7 @@ import type {
 import { claims } from '@/lib/mock-data/claims'
 import { policies } from '@/lib/mock-data/policies'
 import { payments } from '@/lib/mock-data/payments'
-import { patients } from '@/lib/mock-data/users'
+import { organizations, patients } from '@/lib/mock-data/users'
 import { now } from '@/lib/mock-data/_time'
 import {
   badRequest,
@@ -292,8 +292,14 @@ export async function getPolicyById(insurerId: string, policyId: string): Promis
 
 export type PolicyPayload = Omit<
   Policy,
-  'id' | 'insurerId' | 'insurerName' | 'holderName' | 'currency'
+  'id' | 'insurerId' | 'insurerName' | 'holderName' | 'tpaName' | 'currency'
 >
+
+/** GET /api/identity/organizations?type=TPA */
+export async function listTpaOrganizations(): Promise<{ id: string; name: string }[]> {
+  const rows = organizations.filter((o) => o.type === 'tpa').map((o) => ({ id: o.id, name: o.name }))
+  return respond(rows)
+}
 
 /** POST /api/insurance/policies */
 export async function createPolicy(
@@ -313,12 +319,17 @@ export async function createPolicy(
     throw badRequest('The TPA approval limit cannot exceed the annual coverage limit.')
   }
 
+  const tpa = payload.tpaOrganizationId
+    ? organizations.find((o) => o.id === payload.tpaOrganizationId)
+    : undefined
+
   const policy: Policy = {
     ...payload,
     id: nextId('pol'),
     insurerId,
     insurerName,
     holderName: holder.name,
+    tpaName: tpa?.name ?? null,
     currency: 'MYR',
   }
   policies.push(policy)

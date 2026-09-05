@@ -339,7 +339,7 @@ export function toClaim(claim: WireClaim, names: ClaimNames, events: ClaimEvent[
  */
 export function toPolicy(
   policy: WirePolicy,
-  names: { insurerName: string; holderName: string },
+  names: { insurerName: string; holderName: string; tpaName?: string | null },
   truthScoreThreshold: number,
 ): Policy {
   return {
@@ -355,6 +355,8 @@ export function toPolicy(
       policy.status === 'ACTIVE' ? 'active' : policy.status === 'SUSPENDED' ? 'pending' : 'lapsed',
     coverageLimit: policy.coverageRules.maximumCoverage,
     autoApproveLimit: policy.coverageRules.requiresReviewAbove ?? policy.coverageRules.maximumCoverage,
+    tpaOrganizationId: policy.tpaOrganizationId,
+    tpaName: policy.tpaOrganizationId ? (names.tpaName ?? null) : null,
     tpaApprovalLimit: policy.coverageRules.tpaApprovalLimit,
     truthScoreThreshold,
     deductible: policy.coverageRules.deductible,

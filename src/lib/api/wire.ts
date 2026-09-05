@@ -98,6 +98,10 @@ export interface WirePolicy {
   policyNumber: string
   patientRef: string
   insuranceOrganizationId: string
+  /** The TPA delegated to decide claims on this policy up to
+   * `coverageRules.tpaApprovalLimit`; null when the insurer administers it
+   * directly with no TPA delegation. */
+  tpaOrganizationId: string | null
   /** The transcribed product plan tier this policy is written against, when
    * one applies (app/features/clauses in the backend). */
   productPlanId: string | null

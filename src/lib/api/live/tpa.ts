@@ -168,13 +168,16 @@ export async function getClaimById(tpaId: string, claimId: string): Promise<TpaC
   if (!wirePolicy) throw notFound('Policy', wire.policyId)
 
   const wirePatient = await cache.patients.get(wire.patientRef)
-  const insurerName = await organizationName(wirePolicy.insuranceOrganizationId)
+  const [insurerName, tpaName] = await Promise.all([
+    organizationName(wirePolicy.insuranceOrganizationId),
+    wirePolicy.tpaOrganizationId ? organizationName(wirePolicy.tpaOrganizationId) : Promise.resolve(null),
+  ])
 
   return {
     claim,
     policy: toPolicy(
       wirePolicy,
-      { insurerName, holderName: wirePatient?.name ?? claim.patientName },
+      { insurerName, holderName: wirePatient?.name ?? claim.patientName, tpaName },
       TRUTH_SCORE_THRESHOLD,
     ),
     patient: wirePatient ? toPatient(wirePatient) : null,
