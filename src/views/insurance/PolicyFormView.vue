@@ -1,21 +1,23 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import type { CoverageType, PolicyStatus } from '@/lib/types'
 import { useAuthStore } from '@/stores/auth'
 import { useAction, useAsync } from '@/lib/useAsync'
 import * as insuranceApi from '@/lib/api/insurance'
+import * as clausesApi from '@/lib/api/clauses'
+import type { ManulifePlan } from '@/lib/api/clauses'
 import { money } from '@/lib/format'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import SkeletonBlock from '@/components/ui/SkeletonBlock.vue'
 
-const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
-const policyId = computed(() => route.params.policyId as string | undefined)
-const isEdit = computed(() => Boolean(policyId.value))
-
+/** Policies cannot be edited once issued — a claim may already have been
+ * verified against these terms (see the backend's explicit absence of a
+ * `PATCH /api/policies/:id`). This view is create-only; the policy detail
+ * page is the read-only "view details" screen. */
 const COVERAGE_TYPES: CoverageType[] = [
   'Inpatient & Surgical',
   'Outpatient & Specialist',
@@ -27,66 +29,58 @@ const STATUSES: PolicyStatus[] = ['active', 'pending', 'lapsed']
 const today = new Date()
 const inAYear = new Date(today.getTime() + 365 * 24 * 60 * 60 * 1000)
 
+/** Generates a unique-enough policy number in the fixed "MN-<TIER>-<suffix>"
+ * shape — there is exactly one insurer (Manulife) and exactly two tiers, so
+ * nothing here is freely chosen, just made unique per issuance. */
+function generatePolicyNumber(tierCode: string): string {
+  return `MN-${tierCode}-${Date.now().toString(36).toUpperCase()}`
+}
+
 const form = ref({
-  name: '',
-  policyNumber: '',
+  tierCode: '' as '' | 'GOLD' | 'PLATINUM',
   holderPatientId: '',
   coverageType: 'Inpatient & Surgical' as CoverageType,
   status: 'active' as PolicyStatus,
-  coverageLimit: 150_000,
   autoApproveLimit: 15_000,
   tpaApprovalLimit: 10_000 as number | null,
   truthScoreThreshold: 85,
-  deductible: 500,
   annualPremium: 2_940,
   startDate: today.toISOString().slice(0, 10),
   endDate: inAYear.toISOString().slice(0, 10),
 })
 
 const { data: members, loading: loadingMembers } = useAsync(() => insuranceApi.getMembers())
+const { data: plans, loading: loadingPlans } = useAsync(() => clausesApi.getManulifePlans())
 
-const { data: existing, loading: loadingPolicy } = useAsync(
-  () =>
-    policyId.value
-      ? insuranceApi.getPolicyById(auth.orgId!, policyId.value)
-      : Promise.resolve(null),
+/** The one Manulife product this whole app sells — every policy is a tier
+ * of it, never a freely-authored plan. Selecting a tier is the only choice
+ * an insurer makes; everything else about the contract terms follows from it. */
+const selectedPlan = computed<ManulifePlan | null>(
+  () => plans.value?.find((p) => p.code === form.value.tierCode) ?? null,
 )
 
-watch(existing, (policy) => {
-  if (!policy) return
-  form.value = {
-    name: policy.name,
-    policyNumber: policy.policyNumber,
-    holderPatientId: policy.holderPatientId,
-    coverageType: policy.coverageType,
-    status: policy.status,
-    coverageLimit: policy.coverageLimit,
-    autoApproveLimit: policy.autoApproveLimit,
-    tpaApprovalLimit: policy.tpaApprovalLimit,
-    truthScoreThreshold: policy.truthScoreThreshold,
-    deductible: policy.deductible,
-    annualPremium: policy.annualPremium,
-    startDate: policy.startDate.slice(0, 10),
-    endDate: policy.endDate.slice(0, 10),
-  }
-})
+const generatedName = computed(() =>
+  selectedPlan.value ? `Manulife ${selectedPlan.value.name}` : '',
+)
 
-const loading = computed(() => loadingMembers.value || loadingPolicy.value)
+const loading = computed(() => loadingMembers.value || loadingPlans.value)
 
 const limitConflict = computed(
-  () => Number(form.value.autoApproveLimit) > Number(form.value.coverageLimit),
+  () =>
+    selectedPlan.value !== null &&
+    Number(form.value.autoApproveLimit) > selectedPlan.value.overallAnnualLimit,
 )
 
 const tpaLimitConflict = computed(
   () =>
+    selectedPlan.value !== null &&
     form.value.tpaApprovalLimit !== null &&
-    Number(form.value.tpaApprovalLimit) > Number(form.value.coverageLimit),
+    Number(form.value.tpaApprovalLimit) > selectedPlan.value.overallAnnualLimit,
 )
 
 const canSubmit = computed(
   () =>
-    form.value.name.trim() &&
-    form.value.policyNumber.trim() &&
+    selectedPlan.value !== null &&
     form.value.holderPatientId &&
     !limitConflict.value &&
     !tpaLimitConflict.value &&
@@ -95,26 +89,28 @@ const canSubmit = computed(
 )
 
 const save = useAction(async () => {
+  const plan = selectedPlan.value
+  if (!plan) throw new Error('Select a tier first.')
+
   const payload = {
-    name: form.value.name.trim(),
-    policyNumber: form.value.policyNumber.trim(),
+    name: generatedName.value,
+    policyNumber: generatePolicyNumber(plan.code),
+    productPlanId: plan.id,
     holderPatientId: form.value.holderPatientId,
     coverageType: form.value.coverageType,
     status: form.value.status,
-    coverageLimit: Number(form.value.coverageLimit),
+    coverageLimit: plan.overallAnnualLimit,
     autoApproveLimit: Number(form.value.autoApproveLimit),
     tpaApprovalLimit:
       form.value.tpaApprovalLimit === null ? null : Number(form.value.tpaApprovalLimit),
     truthScoreThreshold: Number(form.value.truthScoreThreshold),
-    deductible: Number(form.value.deductible),
+    deductible: plan.deductiblePerPolicyYear,
     annualPremium: Number(form.value.annualPremium),
     startDate: new Date(form.value.startDate).toISOString(),
     endDate: new Date(form.value.endDate).toISOString(),
   }
 
-  return policyId.value
-    ? insuranceApi.updatePolicy(auth.orgId!, policyId.value, payload)
-    : insuranceApi.createPolicy(auth.orgId!, auth.user!.orgName!, payload)
+  return insuranceApi.createPolicy(auth.orgId!, auth.user!.orgName!, payload)
 })
 
 async function submit() {
@@ -126,12 +122,9 @@ async function submit() {
 <template>
   <div class="max-w-3xl">
     <PageHeader
-      :title="isEdit ? 'Edit policy' : 'New policy'"
+      title="New policy"
       subtitle="The auto-approval limit and Truth Score threshold decide which claims this policy sends to an assessor."
-      :back="{
-        to: isEdit ? `/insurance/policies/${policyId}` : '/insurance/policies',
-        label: isEdit ? 'Back to policy' : 'All policies',
-      }"
+      :back="{ to: '/insurance/policies', label: 'All policies' }"
     />
 
     <div v-if="loading" class="surface p-5"><SkeletonBlock :lines="6" /></div>
@@ -141,26 +134,30 @@ async function submit() {
         <h2 class="mb-4 text-sm font-semibold tracking-tight text-mist-100">Identity and cover</h2>
 
         <div class="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label for="policy-name" class="label mb-1.5 block">Policy name</label>
-            <input
-              id="policy-name"
-              v-model="form.name"
-              class="field"
-              placeholder="Basic Medical Plan"
-              required
-            />
+          <div class="sm:col-span-2">
+            <label for="tier" class="label mb-1.5 block">Manulife EZ-Med Deductible tier</label>
+            <select id="tier" v-model="form.tierCode" class="field" required>
+              <option value="" disabled>Select a tier…</option>
+              <option v-for="plan in plans ?? []" :key="plan.code" :value="plan.code">
+                {{ plan.name }} — {{ money(plan.overallAnnualLimit) }} annual limit
+              </option>
+            </select>
+            <p class="mt-1.5 text-xs text-mist-500">
+              There is one Manulife product, sold in two fixed tiers — the policy name, number and
+              contract terms all follow from the tier, not typed in by hand.
+            </p>
           </div>
 
-          <div>
-            <label for="policy-number" class="label mb-1.5 block">Policy number</label>
-            <input
-              id="policy-number"
-              v-model="form.policyNumber"
-              class="field font-mono"
-              placeholder="MN-INP-2026-00001"
-              required
-            />
+          <div v-if="selectedPlan">
+            <p class="label mb-1.5">Policy name</p>
+            <p class="field flex items-center bg-ink-900/40 text-mist-300">{{ generatedName }}</p>
+          </div>
+
+          <div v-if="selectedPlan">
+            <p class="label mb-1.5">Policy number</p>
+            <p class="field flex items-center bg-ink-900/40 font-mono text-mist-300">
+              Assigned on save
+            </p>
           </div>
 
           <div>
@@ -205,29 +202,19 @@ async function submit() {
 
         <div class="grid gap-4 sm:grid-cols-2">
           <div>
-            <label for="coverage-limit" class="label mb-1.5 block">Annual coverage limit</label>
-            <input
-              id="coverage-limit"
-              v-model.number="form.coverageLimit"
-              type="number"
-              min="0"
-              step="100"
-              class="field tnum"
-              required
-            />
+            <p class="label mb-1.5">Annual coverage limit</p>
+            <p class="field tnum flex items-center bg-ink-900/40 text-mist-300">
+              {{ selectedPlan ? money(selectedPlan.overallAnnualLimit) : '— select a tier —' }}
+            </p>
+            <p class="mt-1.5 text-xs text-mist-500">Fixed by the tier's contract terms.</p>
           </div>
 
           <div>
-            <label for="deductible" class="label mb-1.5 block">Deductible</label>
-            <input
-              id="deductible"
-              v-model.number="form.deductible"
-              type="number"
-              min="0"
-              step="50"
-              class="field tnum"
-              required
-            />
+            <p class="label mb-1.5">Deductible</p>
+            <p class="field tnum flex items-center bg-ink-900/40 text-mist-300">
+              {{ selectedPlan ? money(selectedPlan.deductiblePerPolicyYear) : '— select a tier —' }}
+            </p>
+            <p class="mt-1.5 text-xs text-mist-500">Fixed by the tier's contract terms.</p>
           </div>
 
           <div>
@@ -266,7 +253,8 @@ async function submit() {
               required
             />
             <p v-if="limitConflict" class="mt-1.5 text-xs text-rose-300">
-              Cannot exceed the annual coverage limit of {{ money(Number(form.coverageLimit)) }}.
+              Cannot exceed the tier's annual coverage limit of
+              {{ selectedPlan ? money(selectedPlan.overallAnnualLimit) : '—' }}.
             </p>
             <p v-else class="mt-1.5 text-xs text-mist-500">
               Claims above {{ money(Number(form.autoApproveLimit)) }} always reach an assessor.
@@ -285,7 +273,8 @@ async function submit() {
               :class="tpaLimitConflict ? 'border-rose-500/60' : ''"
             />
             <p v-if="tpaLimitConflict" class="mt-1.5 text-xs text-rose-300">
-              Cannot exceed the annual coverage limit of {{ money(Number(form.coverageLimit)) }}.
+              Cannot exceed the tier's annual coverage limit of
+              {{ selectedPlan ? money(selectedPlan.overallAnnualLimit) : '—' }}.
             </p>
             <p v-else class="mt-1.5 text-xs text-mist-500">
               The administering TPA may decide claims at or below this amount alone; above it, the
@@ -322,7 +311,7 @@ async function submit() {
 
       <div class="flex flex-wrap items-center gap-3">
         <button type="submit" class="btn-primary" :disabled="!canSubmit || save.pending.value">
-          {{ save.pending.value ? 'Saving…' : isEdit ? 'Save changes' : 'Create policy' }}
+          {{ save.pending.value ? 'Saving…' : 'Create policy' }}
         </button>
         <button type="button" class="btn-ghost" @click="router.back()">Cancel</button>
       </div>

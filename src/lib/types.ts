@@ -60,6 +60,10 @@ export interface Policy {
   /** Human-readable label (e.g. "Basic Medical Plan") — display only. */
   name: string
   policyNumber: string
+  /** The Manulife EZ-Med Deductible tier (GOLD/PLATINUM) this policy is
+   * written against. Null only for a legacy policy that predates the
+   * product/tier model — every policy created through the UI has one. */
+  productPlanId: string | null
   insurerId: string
   insurerName: string
   holderPatientId: string

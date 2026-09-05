@@ -380,6 +380,7 @@ export async function createPolicy(
     body: {
       name: payload.name,
       policyNumber: payload.policyNumber,
+      productPlanId: payload.productPlanId,
       patientRef: payload.holderPatientId,
       coverageType: payload.coverageType,
       annualPremium: payload.annualPremium,

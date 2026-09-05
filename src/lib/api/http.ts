@@ -68,6 +68,13 @@ export interface RequestOptions {
   auth?: boolean
   /** Overrides the stored token — used during login, before it is persisted. */
   token?: string | null
+  /** Aborts the request after this many ms, surfaced as a clear ApiError
+   * rather than a silent, unbounded hang. Omitted (the default) means no
+   * client-side timeout — most routes are fast enough that one would just
+   * be noise. Set explicitly on routes with a documented, occasionally-slow
+   * upstream (the Gonka verification call in particular can run 60s+ and
+   * has no timeout of its own — see live/verification.ts). */
+  timeoutMs?: number
 }
 
 function buildUrl(path: string, query: RequestOptions['query']): string {
@@ -96,7 +103,7 @@ interface Envelope<T> {
  * inventing one here would be a fiction the views might come to rely on.
  */
 export async function http<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, query, auth = true, token } = options
+  const { method = 'GET', body, query, auth = true, token, timeoutMs } = options
 
   const headers: Record<string, string> = {}
   if (body !== undefined) headers['Content-Type'] = 'application/json'
@@ -104,14 +111,30 @@ export async function http<T>(path: string, options: RequestOptions = {}): Promi
   const bearer = token !== undefined ? token : auth ? getToken() : null
   if (bearer) headers.Authorization = `Bearer ${bearer}`
 
+  const controller = timeoutMs !== undefined ? new AbortController() : undefined
+  const timer =
+    controller !== undefined ? setTimeout(() => controller.abort(), timeoutMs) : undefined
+
   let response: Response
   try {
     response = await fetch(buildUrl(path, query), {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
+      signal: controller?.signal,
     })
   } catch (cause) {
+    if (controller?.signal.aborted) {
+      // Distinct from a network failure: the request was sent and the
+      // backend may still be working on it (verification doesn't stop just
+      // because this tab gave up waiting) — say so, and point at retrying
+      // rather than implying the backend is unreachable.
+      throw new ApiError(
+        408,
+        `This is taking longer than expected (over ${Math.round(timeoutMs! / 1000)}s). The request may still be running on the server — check back in a moment, or retry.`,
+        'REQUEST_TIMEOUT',
+      )
+    }
     // A network-level failure (backend down, wrong port, CORS rejection) never
     // reaches the envelope, so it needs its own message — "Failed to fetch"
     // on its own sends people hunting for a bug in the wrong place.
@@ -120,6 +143,8 @@ export async function http<T>(path: string, options: RequestOptions = {}): Promi
       `Could not reach the WayFare backend at ${API_BASE_URL}. Is it running (npm run dev), and is this origin listed in its CORS_ORIGIN?`,
       'NETWORK_UNAVAILABLE',
     )
+  } finally {
+    clearTimeout(timer)
   }
 
   let envelope: Envelope<T> | null = null
