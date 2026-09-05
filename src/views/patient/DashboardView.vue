@@ -269,7 +269,7 @@ const policyUsed = computed(() => {
               :to="`/patient/payments/${payment.id}`"
               class="flex flex-wrap items-center justify-between gap-4 px-5 py-3.5 transition-colors hover:bg-ink-800/60"
             >
-              <div class="min-w-0">
+              <div class="min-w-0 flex-1">
                 <p class="truncate text-sm font-medium text-mist-100">
                   Paid to {{ payment.payeeName }}
                 </p>

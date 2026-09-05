@@ -140,7 +140,7 @@ const showDevTools = (import.meta.env.VITE_ENABLE_DEV_TOOLS ?? 'true') !== 'fals
             "
             class="flex flex-wrap items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-ink-800/60"
           >
-            <div class="min-w-0">
+            <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2.5">
                 <p class="truncate text-sm font-medium text-mist-100">{{ claim.patientName }}</p>
                 <ClaimStatusBadge :status="claim.status" size="sm" />
